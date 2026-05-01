@@ -16,4 +16,3 @@ Samsung Frame Art Mode upload and restore support varies by model and firmware, 
 Add this repository to the Home Assistant add-on store, then install **Frame TV Schedule**.
 
 Initial development can also be done by copying the `frame_tv_schedule` directory into a Home Assistant `/addons` folder and using the local add-ons repository.
-
