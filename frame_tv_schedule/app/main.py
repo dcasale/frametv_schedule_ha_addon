@@ -29,6 +29,9 @@ scheduler = AsyncIOScheduler(timezone=ZoneInfo(config.timezone))
 async def lifespan(_: FastAPI):
     scheduler.add_job(generate_schedule, "cron", hour=parse_hour(config.generate_time), minute=parse_minute(config.generate_time))
     scheduler.add_job(tick, "interval", minutes=max(config.refresh_minutes, 1), next_run_time=datetime.now(ZoneInfo(config.timezone)))
+    for window in config.display_windows:
+        scheduler.add_job(tick, "cron", hour=parse_hour(window.start), minute=parse_minute(window.start))
+        scheduler.add_job(tick, "cron", hour=parse_hour(window.end), minute=parse_minute(window.end))
     scheduler.start()
     yield
     scheduler.shutdown(wait=False)
@@ -55,10 +58,10 @@ async def index() -> HTMLResponse:
       </head>
       <body>
         <h1>Frame TV Schedule</h1>
-        <form method="post" action="/generate"><button>Generate</button></form>
-        <form method="post" action="/tick"><button>Run Window Check</button></form>
+        <form method="post" action="./generate"><button>Generate</button></form>
+        <form method="post" action="./tick"><button>Run Window Check</button></form>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
-        {'<img src="/image" alt="Generated schedule">' if image_exists else ''}
+        {'<img src="./image" alt="Generated schedule">' if image_exists else ''}
         <h2>State</h2>
         <pre>{state}</pre>
         <h2>Config</h2>
