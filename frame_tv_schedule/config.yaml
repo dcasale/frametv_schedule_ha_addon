@@ -36,7 +36,11 @@ options:
   fallback_art_id: ""
   fallback_image: ""
   tv_host: ""
+  tv_port: 8002
   tv_name: Frame TV
+  tv_token_file: /config/samsung-frame-token.txt
+  tv_timeout_seconds: 15
+  tv_matte: none
   push_mode: dry_run
   weather_entity: ""
   privacy_mode: false
@@ -55,7 +59,11 @@ schema:
   fallback_art_id: str?
   fallback_image: str?
   tv_host: str?
+  tv_port: int
   tv_name: str
+  tv_token_file: str
+  tv_timeout_seconds: int
+  tv_matte: str
   push_mode: list(dry_run|local_frame_api|home_assistant_service)
   weather_entity: str?
   privacy_mode: bool

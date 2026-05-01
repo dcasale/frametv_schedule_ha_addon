@@ -25,7 +25,11 @@ class AddonConfig(BaseModel):
     fallback_art_id: str = ""
     fallback_image: str = ""
     tv_host: str = ""
+    tv_port: int = 8002
     tv_name: str = "Frame TV"
+    tv_token_file: str = "/config/samsung-frame-token.txt"
+    tv_timeout_seconds: int = 15
+    tv_matte: str = "none"
     push_mode: Literal["dry_run", "local_frame_api", "home_assistant_service"] = "dry_run"
     weather_entity: str = ""
     privacy_mode: bool = False
