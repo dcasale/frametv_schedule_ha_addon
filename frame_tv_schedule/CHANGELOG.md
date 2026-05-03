@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Clarify the first-start flow: start add-on, open the web UI, generate the image, then run window checks.
+- Document `privacy_mode` behavior.
+
 ## 0.1.2
 
 - Keep browser actions on the web UI after generating an image or running a window check.

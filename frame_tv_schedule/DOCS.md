@@ -55,13 +55,46 @@ push_mode: dry_run
 privacy_mode: false
 ```
 
-After saving the configuration:
+## After starting the add-on
+
+After saving the configuration and starting the add-on, use the add-on web UI to test the schedule image.
 
 1. Start or restart the add-on.
-2. Open the add-on web UI.
+2. Select **Open Web UI** from the add-on page.
 3. Select **Generate**.
 4. Confirm that the schedule image appears.
 5. Check the add-on logs if no events appear.
+
+If you see a response like this:
+
+```text
+{"image":"/config/schedule-today.png"}
+```
+
+That means the image was generated successfully, but you are viewing the raw API response instead of the add-on's main web page. Go back to the add-on page and select **Open Web UI** again. Add-on version `0.1.2` and later keep browser actions on the web UI and show the generated image preview.
+
+Use **Generate** to test calendar/image generation.
+
+Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
+
+## Configuration fields
+
+`calendar_entity` is the Home Assistant calendar entity ID, such as `calendar.granny`.
+
+`additional_calendar_entity_1` and `additional_calendar_entity_2` are optional extra calendars to include on the same schedule image.
+
+`push_mode` controls whether the add-on only renders an image or also talks to the TV:
+
+- `dry_run`: generate the image only
+- `local_frame_api`: connect directly to the Samsung Frame TV on your local network
+- `home_assistant_service`: reserved for a future Home Assistant service-based TV driver
+
+`privacy_mode` controls what appears on the rendered TV image:
+
+- `false`: show event titles and locations from the calendar
+- `true`: replace event titles with `Busy` and hide locations
+
+Use `privacy_mode: true` if the TV is in a public/shared space and you do not want appointment names or locations visible.
 
 ## Display windows
 
