@@ -4,18 +4,25 @@ This add-on creates a daily schedule image from Home Assistant calendar entities
 
 ## Calendar setup
 
-For Apple Calendar, add your iCloud calendars to Home Assistant with the CalDAV integration. Then add the resulting `calendar.*` entity IDs to this add-on's `calendar_entities` option.
+For Apple Calendar, add your iCloud calendars to Home Assistant with the CalDAV integration. Then add the resulting `calendar.*` entity ID to the add-on's `calendar_entity` field.
+
+For the calendar named `Granny`, Home Assistant will usually create an entity ID like:
+
+```text
+calendar.granny
+```
+
+Use the entity ID, not only the friendly calendar name. If you want more calendars on the same schedule image, use `additional_calendar_entity_1` and `additional_calendar_entity_2`.
 
 ## Display windows
 
-Use `display_windows` to control when the generated schedule should temporarily become the selected artwork.
+Use the simple window fields to control when the generated schedule should temporarily become the selected artwork.
 
 ```yaml
-display_windows:
-  - start: "06:00"
-    end: "08:00"
-  - start: "14:30"
-    end: "16:30"
+morning_window_start: "06:00"
+morning_window_end: "08:00"
+afternoon_window_start: "14:30"
+afternoon_window_end: "16:30"
 ```
 
 Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure a fallback art ID or fallback image.
