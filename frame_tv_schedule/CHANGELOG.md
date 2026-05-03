@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Fix FastAPI startup crash caused by browser action response annotations.
+
 ## 0.1.3
 
 - Clarify the first-start flow: start add-on, open the web UI, generate the image, then run window checks.

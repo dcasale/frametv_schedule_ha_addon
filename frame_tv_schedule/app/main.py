@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import Request
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from .art_window_manager import ArtWindowManager
 from .calendar_client import HomeAssistantCalendarClient
@@ -89,8 +89,8 @@ async def image() -> FileResponse:
     return FileResponse(renderer.output_path, media_type="image/png")
 
 
-@app.post("/generate")
-async def generate_route(request: Request) -> JSONResponse | RedirectResponse:
+@app.post("/generate", response_model=None)
+async def generate_route(request: Request) -> Response:
     path = await generate_schedule()
     result = {"image": str(path)}
     if wants_json(request):
@@ -98,8 +98,8 @@ async def generate_route(request: Request) -> JSONResponse | RedirectResponse:
     return RedirectResponse("./", status_code=303)
 
 
-@app.post("/tick")
-async def tick_route(request: Request) -> JSONResponse | RedirectResponse:
+@app.post("/tick", response_model=None)
+async def tick_route(request: Request) -> Response:
     result = await tick()
     if wants_json(request):
         return JSONResponse(result)
