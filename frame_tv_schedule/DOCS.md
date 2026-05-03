@@ -12,7 +12,56 @@ For the calendar named `Granny`, Home Assistant will usually create an entity ID
 calendar.granny
 ```
 
-Use the entity ID, not only the friendly calendar name. If you want more calendars on the same schedule image, use `additional_calendar_entity_1` and `additional_calendar_entity_2`.
+Use the entity ID, not only the friendly calendar name. The add-on configuration field is a text field, so type or paste the entity ID manually.
+
+To find the exact entity ID in Home Assistant:
+
+1. Go to **Settings** -> **Devices & services**.
+2. Open the **Entities** tab.
+3. Search for `Granny`.
+4. Open the matching calendar entity.
+5. Copy the entity ID shown by Home Assistant, for example `calendar.granny`.
+
+You can also go to **Developer tools** -> **States** and search for `Granny` or `calendar.`.
+
+If you want more calendars on the same schedule image, use `additional_calendar_entity_1` and `additional_calendar_entity_2`.
+
+Recommended first calendar configuration:
+
+```text
+calendar_entity: calendar.granny
+additional_calendar_entity_1:
+additional_calendar_entity_2:
+```
+
+Leave the additional calendar fields blank unless you want to combine multiple calendars into one schedule image.
+
+The CalDAV integration stores and manages your Apple Calendar credentials in Home Assistant. This add-on only asks Home Assistant for events from the calendar entity; it does not need your Apple username, Apple password, or app-specific password.
+
+## First test configuration
+
+Start in `dry_run` mode. This lets you confirm that the add-on can read the calendar and render the schedule image before it tries to control the TV.
+
+```text
+calendar_entity: calendar.granny
+timezone: America/Los_Angeles
+generate_time: 05:00
+refresh_minutes: 30
+morning_window_start: 06:00
+morning_window_end: 08:00
+afternoon_window_start: 14:30
+afternoon_window_end: 16:30
+push_mode: dry_run
+privacy_mode: false
+```
+
+After saving the configuration:
+
+1. Start or restart the add-on.
+2. Open the add-on web UI.
+3. Select **Generate**.
+4. Confirm that the schedule image appears.
+5. Check the add-on logs if no events appear.
 
 ## Display windows
 
@@ -33,6 +82,22 @@ Outside these windows the add-on restores the previous art when the TV driver ca
 
 `local_frame_api` connects directly to the Samsung Frame on your local network and uses its Art Mode API.
 
+The Samsung TV connection does not use a username or password. It uses local network pairing:
+
+1. Set a static DHCP reservation for the TV in your router.
+2. Put the TV IP address in `tv_host`.
+3. Set `push_mode` to `local_frame_api`.
+4. Start or restart the add-on.
+5. Approve the connection prompt on the Samsung TV the first time the add-on connects.
+
+The pairing token is saved in:
+
+```text
+/config/samsung-frame-token.txt
+```
+
+That file is stored in the add-on config directory so the approval should survive add-on restarts and Home Assistant backups.
+
 Recommended TV settings before using `local_frame_api`:
 
 - reserve a static DHCP address for the TV
@@ -42,7 +107,7 @@ Recommended TV settings before using `local_frame_api`:
 
 Required add-on options:
 
-```yaml
+```text
 push_mode: local_frame_api
 tv_host: 192.168.1.50
 tv_port: 8002
@@ -50,9 +115,30 @@ tv_token_file: /config/samsung-frame-token.txt
 tv_matte: none
 ```
 
-The token file stores the local TV pairing token in the add-on config directory so pairing survives restarts and backups.
+Use the TV's real static IP address for `tv_host`.
 
 `home_assistant_service` is reserved for calling a Home Assistant service exposed by another Samsung Frame integration.
+
+## First TV test
+
+After `dry_run` works:
+
+1. Assign the TV a static DHCP address.
+2. Save that IP in `tv_host`.
+3. Change `push_mode` from `dry_run` to `local_frame_api`.
+4. Save and restart the add-on.
+5. Watch the TV for a pairing prompt and approve it.
+6. Temporarily set one display window to include the current time.
+7. Open the add-on web UI and select **Run Window Check**.
+
+For example, if it is currently 3:05 PM, temporarily use:
+
+```text
+afternoon_window_start: 15:00
+afternoon_window_end: 15:20
+```
+
+After the TV test works, set the window back to the normal schedule.
 
 ## Generated files
 
