@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime
+from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from fastapi import Request
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
 from .art_window_manager import ArtWindowManager
 from .calendar_client import HomeAssistantCalendarClient
@@ -44,6 +46,7 @@ app = FastAPI(title="Frame TV Schedule", lifespan=lifespan)
 async def index() -> HTMLResponse:
     state = state_store.read()
     image_exists = renderer.output_path.exists()
+    status = escape(str(state.get("last_action", "Ready")))
     body = f"""
     <!doctype html>
     <html>
@@ -53,6 +56,7 @@ async def index() -> HTMLResponse:
           body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #1f2a2a; background: #f7f4ec; }}
           img {{ max-width: 100%; border: 1px solid #cfc8ba; }}
           button {{ padding: 0.65rem 1rem; margin-right: 0.5rem; }}
+          .status {{ background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }}
           pre {{ background: rgba(255,255,255,0.65); padding: 1rem; overflow: auto; }}
         </style>
       </head>
@@ -60,6 +64,7 @@ async def index() -> HTMLResponse:
         <h1>Frame TV Schedule</h1>
         <form method="post" action="./generate"><button>Generate</button></form>
         <form method="post" action="./tick"><button>Run Window Check</button></form>
+        <div class="status">{status}</div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
         {'<img src="./image" alt="Generated schedule">' if image_exists else ''}
         <h2>State</h2>
@@ -85,22 +90,33 @@ async def image() -> FileResponse:
 
 
 @app.post("/generate")
-async def generate_route() -> JSONResponse:
+async def generate_route(request: Request) -> JSONResponse | RedirectResponse:
     path = await generate_schedule()
-    return JSONResponse({"image": str(path)})
+    result = {"image": str(path)}
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
 
 
 @app.post("/tick")
-async def tick_route() -> JSONResponse:
+async def tick_route(request: Request) -> JSONResponse | RedirectResponse:
     result = await tick()
-    return JSONResponse(result)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
 
 
 async def generate_schedule() -> Path:
     start, end = window_manager.today_bounds()
     events = await calendar_client.get_events(config.calendar_entities, start, end)
     path = renderer.render(events)
-    state_store.update({"last_generated": datetime.now(ZoneInfo(config.timezone)).isoformat(), "event_count": len(events)})
+    state_store.update(
+        {
+            "last_action": f"Generated schedule image with {len(events)} event(s).",
+            "last_generated": datetime.now(ZoneInfo(config.timezone)).isoformat(),
+            "event_count": len(events),
+        }
+    )
     return path
 
 
@@ -114,17 +130,29 @@ async def tick() -> dict[str, str]:
             await generate_schedule()
         previous = await frame_client.get_current_art()
         await frame_client.show_schedule(renderer.output_path)
-        state_store.update({"schedule_active": True, "previous_art": previous.__dict__})
+        state_store.update(
+            {
+                "last_action": "Window check showed the schedule on the Frame TV.",
+                "schedule_active": True,
+                "previous_art": previous.__dict__,
+            }
+        )
         return {"action": "show_schedule"}
 
     if not should_show and active:
         previous_art = state.get("previous_art") or {}
         previous = ArtState(**previous_art) if previous_art else None
         await frame_client.restore_art(previous)
-        state_store.update({"schedule_active": False})
+        state_store.update({"last_action": "Window check restored the previous art.", "schedule_active": False})
         return {"action": "restore_art"}
 
+    state_store.update({"last_action": "Window check completed. No display change was needed."})
     return {"action": "no_change"}
+
+
+def wants_json(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "application/json" in accept and "text/html" not in accept
 
 
 def parse_hour(value: str) -> int:

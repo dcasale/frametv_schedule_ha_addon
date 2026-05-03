@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Keep browser actions on the web UI after generating an image or running a window check.
+- Show the last action status above the generated image preview.
+
 ## 0.1.1
 
 - Replace YAML-style first-run options with simple Home Assistant add-on config fields.
