@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+- Add `ignore_art_support_check` advanced option for TVs that report `FrameTVSupport=false` but may still answer Art API commands.
+
 ## 0.1.7
 
 - Add explicit web UI buttons to push the calendar image, restore the prior image, and push fallback art.

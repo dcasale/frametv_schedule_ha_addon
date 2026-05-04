@@ -40,6 +40,7 @@ class AddonConfig(BaseModel):
     push_mode: Literal["dry_run", "local_frame_api", "home_assistant_service"] = "dry_run"
     weather_entity: str = ""
     privacy_mode: bool = False
+    ignore_art_support_check: bool = False
 
     @model_validator(mode="after")
     def apply_simple_fields(self) -> "AddonConfig":
