@@ -82,7 +82,7 @@ class FrameClient:
     def _get_current_art_sync(self) -> ArtState:
         with self._tv() as tv:
             art = tv.art()
-            ensure_art_supported(art, ignore_check=self.config.ignore_art_support_check)
+            ensure_art_supported(art)
             payload = art.get_current()
             content_id = extract_content_id(payload)
             logger.info("current Samsung Frame art id=%s", content_id or "(unknown)")
@@ -92,7 +92,7 @@ class FrameClient:
         content_id = self._ensure_uploaded_schedule(image_path)
         with self._tv() as tv:
             art = tv.art()
-            ensure_art_supported(art, ignore_check=self.config.ignore_art_support_check)
+            ensure_art_supported(art)
             art.select_image(content_id, show=True)
             art.set_artmode(True)
         logger.info("showing schedule art id=%s", content_id)
@@ -112,7 +112,7 @@ class FrameClient:
 
         with self._tv() as tv:
             art = tv.art()
-            ensure_art_supported(art, ignore_check=self.config.ignore_art_support_check)
+            ensure_art_supported(art)
             art.select_image(target, show=True)
             art.set_artmode(True)
         logger.info("restored art id=%s", target)
@@ -127,7 +127,7 @@ class FrameClient:
 
         with self._tv() as tv:
             art = tv.art()
-            ensure_art_supported(art, ignore_check=self.config.ignore_art_support_check)
+            ensure_art_supported(art)
             art.select_image(target, show=True)
             art.set_artmode(True)
         logger.info("showing fallback art id=%s", target)
@@ -163,7 +163,7 @@ class FrameClient:
         logger.info("uploading image to Samsung Frame host=%s path=%s", self.config.tv_host, image_path)
         with self._tv() as tv:
             art = tv.art()
-            ensure_art_supported(art, ignore_check=self.config.ignore_art_support_check)
+            ensure_art_supported(art)
             before = available_content_ids(art.available())
             data = image_path.read_bytes()
             kwargs: dict[str, str] = {"file_type": "png"}
@@ -217,12 +217,9 @@ class SamsungTvContext:
             close()
 
 
-def ensure_art_supported(art: Any, ignore_check: bool = False) -> None:
+def ensure_art_supported(art: Any) -> None:
     supported = getattr(art, "supported", None)
     if callable(supported) and supported() is False:
-        if ignore_check:
-            logger.warning("TV reports FrameTVSupport=false; trying Samsung Art API anyway")
-            return
         raise RuntimeError("This TV does not report Samsung Frame Art Mode API support")
 
 

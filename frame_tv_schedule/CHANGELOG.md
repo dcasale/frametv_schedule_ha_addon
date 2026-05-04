@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9
+
+- Redesign the rendered calendar image for Frame TV Art Mode readability.
+- Limit the visible timeline to larger high-contrast rows with overflow text.
+- Remove the temporary Samsung Art support override option.
+
 ## 0.1.8
 
 - Add `ignore_art_support_check` advanced option for TVs that report `FrameTVSupport=false` but may still answer Art API commands.

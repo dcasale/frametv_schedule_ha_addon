@@ -102,13 +102,6 @@ Use **Run Window Check** to test whether the add-on should show or restore the s
 
 Use `privacy_mode: true` if the TV is in a public/shared space and you do not want appointment names or locations visible.
 
-`ignore_art_support_check` is an advanced Samsung Frame troubleshooting option:
-
-- `false`: stop if the TV reports `FrameTVSupport=false`
-- `true`: try the Samsung Art API anyway
-
-Only set this to `true` if **Push Calendar Image** fails with `This TV does not report Samsung Frame Art Mode API support`. If the TV really does not support the Art API, the next attempt may fail with a more specific upload, current-art, or connection error.
-
 ## Display windows
 
 Use the simple window fields to control when the generated schedule should temporarily become the selected artwork.
@@ -121,6 +114,12 @@ afternoon_window_end: "16:30"
 ```
 
 Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure a fallback art ID or fallback image.
+
+## Schedule image readability
+
+The schedule image is designed for dim Frame TV Art Mode viewing. It shows a small number of large, high-contrast rows instead of trying to fit every event on the screen. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
+
+This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
 ## TV push modes
 
