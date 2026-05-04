@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6
+
+- Add detailed add-on logs for schedule generation, window checks, and Samsung Frame actions.
+- Add a **Push to TV Now** web UI action for pairing and direct TV testing.
+- Prevent previous `dry_run` state from blocking the first `local_frame_api` push.
+
 ## 0.1.5
 
 - Add Home Assistant add-on icon and logo assets.

@@ -77,6 +77,8 @@ Use **Generate** to test calendar/image generation.
 
 Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
 
+Use **Push to TV Now** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window.
+
 ## Configuration fields
 
 `calendar_entity` is the Home Assistant calendar entity ID, such as `calendar.granny`.
@@ -160,9 +162,10 @@ After `dry_run` works:
 2. Save that IP in `tv_host`.
 3. Change `push_mode` from `dry_run` to `local_frame_api`.
 4. Save and restart the add-on.
-5. Watch the TV for a pairing prompt and approve it.
-6. Temporarily set one display window to include the current time.
-7. Open the add-on web UI and select **Run Window Check**.
+5. Open the add-on web UI and select **Push to TV Now**.
+6. Watch the TV for a pairing prompt and approve it.
+7. If **Push to TV Now** works, temporarily set one display window to include the current time.
+8. Select **Run Window Check**.
 
 For example, if it is currently 3:05 PM, temporarily use:
 
@@ -172,6 +175,8 @@ afternoon_window_end: 15:20
 ```
 
 After the TV test works, set the window back to the normal schedule.
+
+The add-on logs should show entries for `push_mode`, `tv_host`, whether a window check decided to show the schedule, and each Samsung Frame action attempted.
 
 ## Generated files
 
