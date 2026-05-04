@@ -190,7 +190,12 @@ async def set_fallback_art_route(request: Request, art_name: str = Form(...)) ->
 
 async def generate_schedule() -> Path:
     start, end = window_manager.today_bounds()
-    logger.info("generating schedule for %s calendar(s)", len(config.calendar_entities))
+    logger.info(
+        "generating schedule for calendar_entities=%s start=%s end=%s",
+        config.calendar_entities,
+        start.isoformat(),
+        end.isoformat(),
+    )
     events = await calendar_client.get_events(config.calendar_entities, start, end)
     path = renderer.render(events)
     logger.info("generated schedule image at %s with %s event(s)", path, len(events))

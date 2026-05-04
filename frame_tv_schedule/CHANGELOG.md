@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Install DejaVu fonts in the add-on image so the schedule renderer uses large TrueType text instead of Pillow's tiny fallback font.
+- Accept friendly calendar names such as `Granny` by normalizing them to Home Assistant calendar entity ids such as `calendar.granny`.
+- Add calendar fetch logging for configured entities, date bounds, returned calendars, and event counts.
+
 ## 0.2.0
 
 - Add an add-on art library for uploading and normalizing user artwork.

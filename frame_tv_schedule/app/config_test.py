@@ -24,6 +24,14 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.display_windows[1].start, "14:45")
         self.assertEqual(config.display_windows[1].end, "16:45")
 
+    def test_calendar_friendly_names_are_normalized_to_entity_ids(self) -> None:
+        config = AddonConfig(
+            calendar_entity="Granny",
+            additional_calendar_entity_1="Family Calendar",
+        )
+
+        self.assertEqual(config.calendar_entities, ["calendar.granny", "calendar.family_calendar"])
+
     def test_existing_list_options_still_load(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "options.json"

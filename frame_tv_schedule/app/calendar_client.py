@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import logging
 import os
 
 import aiohttp
+
+logger = logging.getLogger("frame_tv_schedule.calendar")
 
 
 @dataclass(frozen=True)
@@ -28,9 +31,19 @@ class HomeAssistantCalendarClient:
         start: datetime,
         end: datetime,
     ) -> list[CalendarEvent]:
-        if not calendar_entities or not self.base_url or not self.token:
+        if not calendar_entities:
+            logger.warning("skipping calendar fetch because no calendar entities are configured")
+            return []
+        if not self.base_url or not self.token:
+            logger.warning("skipping calendar fetch because the Home Assistant supervisor token is unavailable")
             return []
 
+        logger.info(
+            "fetching calendar events entities=%s start=%s end=%s",
+            calendar_entities,
+            start.isoformat(),
+            end.isoformat(),
+        )
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
@@ -50,7 +63,9 @@ class HomeAssistantCalendarClient:
                 response.raise_for_status()
                 data = await response.json()
 
-        return self._parse_response(data)
+        events = self._parse_response(data)
+        logger.info("calendar fetch returned calendars=%s event_count=%s", list(data.keys()), len(events))
+        return events
 
     def _parse_response(self, data: dict) -> list[CalendarEvent]:
         events: list[CalendarEvent] = []

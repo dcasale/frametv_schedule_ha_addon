@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -48,7 +49,7 @@ class AddonConfig(BaseModel):
             self.additional_calendar_entity_1,
             self.additional_calendar_entity_2,
         ]
-        simple_calendar_entities = [entity.strip() for entity in simple_calendar_entities if entity.strip()]
+        simple_calendar_entities = [normalize_calendar_entity(entity) for entity in simple_calendar_entities if entity.strip()]
         if simple_calendar_entities:
             self.calendar_entities = simple_calendar_entities
 
@@ -75,3 +76,11 @@ def load_config(path: str | Path = "/data/options.json") -> AddonConfig:
 
 def config_json(config: AddonConfig) -> str:
     return json.dumps(config.model_dump(), indent=2)
+
+
+def normalize_calendar_entity(value: str) -> str:
+    entity = value.strip()
+    if not entity or entity.startswith("calendar."):
+        return entity
+    slug = re.sub(r"[^a-z0-9_]+", "_", entity.lower()).strip("_")
+    return f"calendar.{slug}" if slug else entity

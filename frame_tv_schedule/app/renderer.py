@@ -28,14 +28,15 @@ class ScheduleRenderer:
         title_font = load_font(168, bold=True)
         date_font = load_font(76, bold=True)
         section_font = load_font(54, bold=True)
-        time_font = load_font(70, bold=True)
-        event_font = load_font(84, bold=True)
+        time_font = load_font(66, bold=True)
+        event_font = load_font(78, bold=True)
         detail_font = load_font(50)
         small_font = load_font(42)
 
         draw.rectangle((0, 0, width, height), fill="#fbf7ec")
         draw.rounded_rectangle((margin - 48, top - 44, width - margin + 48, height - top + 42), radius=44, fill="#fffdf6")
-        draw.line((margin, top + 220, width - margin, top + 220), fill="#243232", width=8)
+        divider_y = top + 310
+        draw.line((margin, divider_y, width - margin, divider_y), fill="#243232", width=8)
 
         draw.text((margin, top), "Today's Schedule", fill="#172424", font=title_font)
         draw.text((margin, top + 158), now.strftime("%A, %B %-d"), fill="#3f4d4c", font=date_font)
@@ -43,7 +44,7 @@ class ScheduleRenderer:
         all_day = [event for event in events if event.all_day]
         timed = [event for event in events if not event.all_day]
 
-        cursor = top + 305
+        cursor = divider_y + 88
         if all_day:
             draw.text((margin, cursor), "All Day", fill="#9a5b1e", font=section_font)
             cursor += 78
@@ -67,7 +68,7 @@ class ScheduleRenderer:
                 row_bottom = min(cursor + row_height, height - 160)
                 draw.rounded_rectangle((margin, cursor, width - margin, row_bottom), radius=24, fill="#f1eadc")
                 draw.text((margin + 42, cursor + 42), time_label, fill="#263737", font=time_font)
-                text_x = margin + 560
+                text_x = margin + 760
                 draw_wrapped_text(
                     draw,
                     summary(event, self.config.privacy_mode),
@@ -100,8 +101,10 @@ def event_time_label(event: CalendarEvent) -> str:
     if not event.start:
         return ""
     if event.end:
-        return f"{event.start.strftime('%-I:%M')}-{event.end.strftime('%-I:%M')}"
-    return event.start.strftime("%-I:%M")
+        if event.start.strftime("%p") == event.end.strftime("%p"):
+            return f"{event.start.strftime('%-I:%M')}-{event.end.strftime('%-I:%M %p')}"
+        return f"{event.start.strftime('%-I:%M %p')}-{event.end.strftime('%-I:%M %p')}"
+    return event.start.strftime("%-I:%M %p")
 
 
 def draw_wrapped_text(
@@ -158,6 +161,7 @@ def font_size(font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> int:
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     for path in (
+        "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/TTF/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
