@@ -73,11 +73,15 @@ If you see a response like this:
 
 That means the image was generated successfully, but you are viewing the raw API response instead of the add-on's main web page. Go back to the add-on page and select **Open Web UI** again. Add-on version `0.1.2` and later keep browser actions on the web UI and show the generated image preview.
 
-Use **Generate** to test calendar/image generation.
+Use **Generate** to test calendar/image generation without touching the TV.
+
+Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window.
+
+Use **Restore Prior Image** to restore the art that was active before the last calendar push. This only works after the add-on has successfully read and stored a prior art ID.
+
+Use **Push Fallback Image** to show the configured fallback art. Configure either `fallback_art_id` or `fallback_image` first.
 
 Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
-
-Use **Push to TV Now** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window.
 
 ## Configuration fields
 
@@ -162,10 +166,12 @@ After `dry_run` works:
 2. Save that IP in `tv_host`.
 3. Change `push_mode` from `dry_run` to `local_frame_api`.
 4. Save and restart the add-on.
-5. Open the add-on web UI and select **Push to TV Now**.
+5. Open the add-on web UI and select **Push Calendar Image**.
 6. Watch the TV for a pairing prompt and approve it.
-7. If **Push to TV Now** works, temporarily set one display window to include the current time.
-8. Select **Run Window Check**.
+7. If **Push Calendar Image** works, select **Restore Prior Image** to verify restore behavior.
+8. If fallback art is configured, select **Push Fallback Image** to verify fallback behavior.
+9. Temporarily set one display window to include the current time.
+10. Select **Run Window Check**.
 
 For example, if it is currently 3:05 PM, temporarily use:
 

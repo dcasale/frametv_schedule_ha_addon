@@ -66,6 +66,19 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
+    async def show_fallback(self) -> None:
+        if self.config.push_mode == "dry_run":
+            target = self.config.fallback_art_id or self.config.fallback_image
+            logger.info("dry run: would show fallback art %s", target or "(not configured)")
+            return
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("showing fallback on Samsung Frame host=%s", self.config.tv_host)
+            await asyncio.to_thread(self._show_fallback_sync)
+            return
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
     def _get_current_art_sync(self) -> ArtState:
         with self._tv() as tv:
             art = tv.art()
@@ -104,6 +117,21 @@ class FrameClient:
             art.set_artmode(True)
         logger.info("restored art id=%s", target)
 
+    def _show_fallback_sync(self) -> None:
+        target = self.config.fallback_art_id
+        if not target and self.config.fallback_image:
+            target = self._ensure_uploaded_fallback(Path(self.config.fallback_image))
+
+        if not target:
+            raise RuntimeError("fallback_art_id or fallback_image is required to push fallback art")
+
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            art.select_image(target, show=True)
+            art.set_artmode(True)
+        logger.info("showing fallback art id=%s", target)
+
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
         image_hash = file_sha256(image_path)
         state = self._read_state()
@@ -120,9 +148,11 @@ class FrameClient:
         image_hash = file_sha256(image_path)
         state = self._read_state()
         if state.get("fallback_image_sha256") == image_hash and state.get("fallback_art_id"):
+            logger.info("using cached fallback art id=%s", state["fallback_art_id"])
             return str(state["fallback_art_id"])
 
         content_id = self._upload_image(image_path)
+        logger.info("uploaded fallback image as art id=%s", content_id)
         self._write_state({**state, "fallback_image_sha256": image_hash, "fallback_art_id": content_id})
         return content_id
 

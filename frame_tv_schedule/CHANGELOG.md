@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.7
+
+- Add explicit web UI buttons to push the calendar image, restore the prior image, and push fallback art.
+- Show web UI action failures in the status panel.
+
 ## 0.1.6
 
 - Add detailed add-on logs for schedule generation, window checks, and Samsung Frame actions.

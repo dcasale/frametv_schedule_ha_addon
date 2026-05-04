@@ -5,6 +5,7 @@ from datetime import datetime
 from html import escape
 import logging
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import Request
@@ -74,8 +75,10 @@ async def index() -> HTMLResponse:
       <body>
         <h1>Frame TV Schedule</h1>
         <form method="post" action="./generate"><button>Generate</button></form>
+        <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
+        <form method="post" action="./restore-prior"><button>Restore Prior Image</button></form>
+        <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
         <form method="post" action="./tick"><button>Run Window Check</button></form>
-        <form method="post" action="./show-now"><button>Push to TV Now</button></form>
         <div class="status">{status}</div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
         {'<img src="./image" alt="Generated schedule">' if image_exists else ''}
@@ -118,9 +121,25 @@ async def tick_route(request: Request) -> Response:
     return RedirectResponse("./", status_code=303)
 
 
-@app.post("/show-now", response_model=None)
-async def show_now_route(request: Request) -> Response:
-    result = await show_now()
+@app.post("/push-calendar", response_model=None)
+async def push_calendar_route(request: Request) -> Response:
+    result = await run_ui_action(push_calendar_image)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/restore-prior", response_model=None)
+async def restore_prior_route(request: Request) -> Response:
+    result = await run_ui_action(restore_prior_image)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/push-fallback", response_model=None)
+async def push_fallback_route(request: Request) -> Response:
+    result = await run_ui_action(push_fallback_image)
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./", status_code=303)
@@ -178,10 +197,43 @@ async def tick() -> dict[str, str]:
     return {"action": "no_change"}
 
 
-async def show_now() -> dict[str, str]:
-    logger.info("manual push requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
-    await push_schedule_to_frame("Manual push")
+async def push_calendar_image() -> dict[str, str]:
+    logger.info("push calendar requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
+    await push_schedule_to_frame("Manual calendar push")
     return {"action": "show_schedule"}
+
+
+async def restore_prior_image() -> dict[str, str]:
+    state = state_store.read()
+    previous_art = state.get("previous_art") or {}
+    previous = ArtState(**previous_art) if previous_art else None
+    logger.info("restore prior requested previous_art=%s", previous.art_id if previous else "(not stored)")
+    await frame_client.restore_art(previous)
+    state_store.update(
+        {
+            "last_action": "Restored prior image on the Frame TV.",
+            "schedule_active": False,
+            "schedule_push_mode": config.push_mode,
+        }
+    )
+    return {"action": "restore_prior"}
+
+
+async def push_fallback_image() -> dict[str, str]:
+    logger.info(
+        "push fallback requested fallback_art_id=%s fallback_image=%s",
+        config.fallback_art_id or "(not set)",
+        config.fallback_image or "(not set)",
+    )
+    await frame_client.show_fallback()
+    state_store.update(
+        {
+            "last_action": "Pushed fallback image to the Frame TV.",
+            "schedule_active": False,
+            "schedule_push_mode": config.push_mode,
+        }
+    )
+    return {"action": "push_fallback"}
 
 
 async def push_schedule_to_frame(action_label: str) -> ArtState:
@@ -199,6 +251,16 @@ async def push_schedule_to_frame(action_label: str) -> ArtState:
     )
     logger.info("%s showed schedule using push_mode=%s", action_label.lower(), config.push_mode)
     return previous
+
+
+async def run_ui_action(action: Any) -> dict[str, str]:
+    try:
+        return await action()
+    except Exception as error:
+        logger.exception("web UI action failed")
+        message = f"{type(error).__name__}: {error}"
+        state_store.update({"last_action": f"Action failed: {message}"})
+        return {"action": "error", "error": message}
 
 
 def wants_json(request: Request) -> bool:
