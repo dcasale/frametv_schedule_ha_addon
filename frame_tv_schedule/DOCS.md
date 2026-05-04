@@ -83,6 +83,17 @@ Use **Push Fallback Image** to show the configured fallback art. Configure eithe
 
 Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
 
+## Art library
+
+Use the **Art Library** section in the web UI to upload images into the add-on. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size.
+
+After uploading art, use the dropdown to:
+
+- **Push Selected Art**: manually show that image on the TV.
+- **Use Selected Art as Fallback**: make that image the fallback used by **Push Fallback Image**.
+
+This is the recommended safety path if restore-prior is unreliable on your TV. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image** before relying on automatic restore behavior.
+
 ## Configuration fields
 
 `calendar_entity` is the Home Assistant calendar entity ID, such as `calendar.granny`.
@@ -175,9 +186,10 @@ After `dry_run` works:
 5. Open the add-on web UI and select **Push Calendar Image**.
 6. Watch the TV for a pairing prompt and approve it.
 7. If **Push Calendar Image** works, select **Restore Prior Image** to verify restore behavior.
-8. If fallback art is configured, select **Push Fallback Image** to verify fallback behavior.
-9. Temporarily set one display window to include the current time.
-10. Select **Run Window Check**.
+8. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Fallback**.
+9. Select **Push Fallback Image** to verify fallback behavior.
+10. Temporarily set one display window to include the current time.
+11. Select **Run Window Check**.
 
 For example, if it is currently 3:05 PM, temporarily use:
 

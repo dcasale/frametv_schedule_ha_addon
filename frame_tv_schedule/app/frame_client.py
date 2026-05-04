@@ -38,13 +38,16 @@ class FrameClient:
         return ArtState(source="unsupported")
 
     async def show_schedule(self, image_path: Path) -> None:
+        await self.show_image(image_path, label="schedule")
+
+    async def show_image(self, image_path: Path, label: str = "image") -> None:
         if self.config.push_mode == "dry_run":
-            logger.info("dry run: would show %s on %s", image_path, self.config.tv_name)
+            logger.info("dry run: would show %s %s on %s", label, image_path, self.config.tv_name)
             return
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("showing schedule on Samsung Frame host=%s image=%s", self.config.tv_host, image_path)
-            await asyncio.to_thread(self._show_schedule_sync, image_path)
+            logger.info("showing %s on Samsung Frame host=%s image=%s", label, self.config.tv_host, image_path)
+            await asyncio.to_thread(self._show_image_sync, image_path, label)
             return
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
@@ -88,14 +91,14 @@ class FrameClient:
             logger.info("current Samsung Frame art id=%s", content_id or "(unknown)")
             return ArtState(art_id=content_id, source="local_frame_api")
 
-    def _show_schedule_sync(self, image_path: Path) -> None:
-        content_id = self._ensure_uploaded_schedule(image_path)
+    def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
+        content_id = self._ensure_uploaded_image(image_path, label)
         with self._tv() as tv:
             art = tv.art()
             ensure_art_supported(art)
             art.select_image(content_id, show=True)
             art.set_artmode(True)
-        logger.info("showing schedule art id=%s", content_id)
+        logger.info("showing %s art id=%s", label, content_id)
 
     def _restore_art_sync(self, previous: ArtState | None) -> None:
         target = ""
@@ -133,15 +136,20 @@ class FrameClient:
         logger.info("showing fallback art id=%s", target)
 
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
+        return self._ensure_uploaded_image(image_path, "schedule")
+
+    def _ensure_uploaded_image(self, image_path: Path, label: str) -> str:
         image_hash = file_sha256(image_path)
         state = self._read_state()
-        if state.get("schedule_image_sha256") == image_hash and state.get("schedule_art_id"):
-            logger.info("using cached schedule art id=%s", state["schedule_art_id"])
-            return str(state["schedule_art_id"])
+        sha_key = f"{label}_image_sha256"
+        art_key = f"{label}_art_id"
+        if state.get(sha_key) == image_hash and state.get(art_key):
+            logger.info("using cached %s art id=%s", label, state[art_key])
+            return str(state[art_key])
 
         content_id = self._upload_image(image_path)
-        logger.info("uploaded schedule image as art id=%s", content_id)
-        self._write_state({**state, "schedule_image_sha256": image_hash, "schedule_art_id": content_id})
+        logger.info("uploaded %s image as art id=%s", label, content_id)
+        self._write_state({**state, sha_key: image_hash, art_key: content_id})
         return content_id
 
     def _ensure_uploaded_fallback(self, image_path: Path) -> str:

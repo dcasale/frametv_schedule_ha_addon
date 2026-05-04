@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Add an add-on art library for uploading and normalizing user artwork.
+- Add dropdown controls to push selected art and set selected art as fallback.
+- Make restore-prior fail clearly when no prior art ID was captured.
+- Add cache busting to the generated schedule image preview.
+
 ## 0.1.9
 
 - Redesign the rendered calendar image for Frame TV Art Mode readability.

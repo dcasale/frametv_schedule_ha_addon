@@ -8,11 +8,12 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import Request
+from fastapi import File, Form, Request, UploadFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
+from .art_library import ArtLibrary
 from .art_window_manager import ArtWindowManager
 from .calendar_client import HomeAssistantCalendarClient
 from .config import config_json, load_config
@@ -29,6 +30,7 @@ calendar_client = HomeAssistantCalendarClient()
 frame_client = FrameClient(config)
 renderer = ScheduleRenderer(config)
 state_store = StateStore()
+art_library = ArtLibrary(width=config.image_width, height=config.image_height)
 scheduler = AsyncIOScheduler(timezone=ZoneInfo(config.timezone))
 
 
@@ -58,7 +60,9 @@ app = FastAPI(title="Frame TV Schedule", lifespan=lifespan)
 async def index() -> HTMLResponse:
     state = state_store.read()
     image_exists = renderer.output_path.exists()
+    image_version = int(renderer.output_path.stat().st_mtime) if image_exists else 0
     status = escape(str(state.get("last_action", "Ready")))
+    art_options = render_art_options(art_library.list_images(), str(state.get("fallback_art_file", "")))
     body = f"""
     <!doctype html>
     <html>
@@ -68,6 +72,8 @@ async def index() -> HTMLResponse:
           body {{ font-family: system-ui, sans-serif; margin: 2rem; color: #1f2a2a; background: #f7f4ec; }}
           img {{ max-width: 100%; border: 1px solid #cfc8ba; }}
           button {{ padding: 0.65rem 1rem; margin-right: 0.5rem; }}
+          input, select {{ padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; }}
+          form {{ margin: 0.65rem 0; }}
           .status {{ background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }}
           pre {{ background: rgba(255,255,255,0.65); padding: 1rem; overflow: auto; }}
         </style>
@@ -80,8 +86,21 @@ async def index() -> HTMLResponse:
         <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
         <form method="post" action="./tick"><button>Run Window Check</button></form>
         <div class="status">{status}</div>
+        <h2>Art Library</h2>
+        <form method="post" action="./upload-art" enctype="multipart/form-data">
+          <input type="file" name="art_file" accept="image/*" required>
+          <button>Upload Art</button>
+        </form>
+        <form method="post" action="./push-art">
+          <select name="art_name" required>{art_options}</select>
+          <button>Push Selected Art</button>
+        </form>
+        <form method="post" action="./set-fallback-art">
+          <select name="art_name" required>{art_options}</select>
+          <button>Use Selected Art as Fallback</button>
+        </form>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
-        {'<img src="./image" alt="Generated schedule">' if image_exists else ''}
+        {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ''}
         <h2>State</h2>
         <pre>{state}</pre>
         <h2>Config</h2>
@@ -140,6 +159,30 @@ async def restore_prior_route(request: Request) -> Response:
 @app.post("/push-fallback", response_model=None)
 async def push_fallback_route(request: Request) -> Response:
     result = await run_ui_action(push_fallback_image)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/upload-art", response_model=None)
+async def upload_art_route(request: Request, art_file: UploadFile = File(...)) -> Response:
+    result = await run_ui_action(lambda: upload_art(art_file))
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/push-art", response_model=None)
+async def push_art_route(request: Request, art_name: str = Form(...)) -> Response:
+    result = await run_ui_action(lambda: push_library_art(art_name))
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/set-fallback-art", response_model=None)
+async def set_fallback_art_route(request: Request, art_name: str = Form(...)) -> Response:
+    result = await run_ui_action(lambda: set_fallback_art(art_name))
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./", status_code=303)
@@ -208,6 +251,8 @@ async def restore_prior_image() -> dict[str, str]:
     previous_art = state.get("previous_art") or {}
     previous = ArtState(**previous_art) if previous_art else None
     logger.info("restore prior requested previous_art=%s", previous.art_id if previous else "(not stored)")
+    if not previous or not previous.art_id:
+        raise RuntimeError("No prior art ID was stored before the calendar image was pushed")
     await frame_client.restore_art(previous)
     state_store.update(
         {
@@ -220,6 +265,21 @@ async def restore_prior_image() -> dict[str, str]:
 
 
 async def push_fallback_image() -> dict[str, str]:
+    state = state_store.read()
+    fallback_art_file = str(state.get("fallback_art_file", ""))
+    if fallback_art_file:
+        path = art_library.get(fallback_art_file)
+        logger.info("push fallback requested from art library path=%s", path)
+        await frame_client.show_image(path, label=f"fallback_{path.stem}")
+        state_store.update(
+            {
+                "last_action": f"Pushed fallback art {path.name} to the Frame TV.",
+                "schedule_active": False,
+                "schedule_push_mode": config.push_mode,
+            }
+        )
+        return {"action": "push_fallback", "image": path.name}
+
     logger.info(
         "push fallback requested fallback_art_id=%s fallback_image=%s",
         config.fallback_art_id or "(not set)",
@@ -234,6 +294,34 @@ async def push_fallback_image() -> dict[str, str]:
         }
     )
     return {"action": "push_fallback"}
+
+
+async def upload_art(art_file: UploadFile) -> dict[str, str]:
+    path = await art_library.save_upload(art_file)
+    state_store.update({"last_action": f"Uploaded art image {path.name}."})
+    logger.info("uploaded art library image path=%s", path)
+    return {"action": "upload_art", "image": path.name}
+
+
+async def push_library_art(art_name: str) -> dict[str, str]:
+    path = art_library.get(art_name)
+    logger.info("push selected art requested path=%s", path)
+    await frame_client.show_image(path, label=f"library_{path.stem}")
+    state_store.update(
+        {
+            "last_action": f"Pushed selected art {path.name} to the Frame TV.",
+            "schedule_active": False,
+            "schedule_push_mode": config.push_mode,
+        }
+    )
+    return {"action": "push_art", "image": path.name}
+
+
+async def set_fallback_art(art_name: str) -> dict[str, str]:
+    path = art_library.get(art_name)
+    state_store.update({"last_action": f"Set fallback art to {path.name}.", "fallback_art_file": path.name})
+    logger.info("fallback art set to path=%s", path)
+    return {"action": "set_fallback_art", "image": path.name}
 
 
 async def push_schedule_to_frame(action_label: str) -> ArtState:
@@ -266,6 +354,18 @@ async def run_ui_action(action: Any) -> dict[str, str]:
 def wants_json(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "application/json" in accept and "text/html" not in accept
+
+
+def render_art_options(paths: list[Path], selected_name: str = "") -> str:
+    if not paths:
+        return '<option value="">Upload art first</option>'
+    options = []
+    for path in paths:
+        selected = " selected" if path.name == selected_name else ""
+        label = escape(path.stem.replace("-", " "))
+        value = escape(path.name)
+        options.append(f'<option value="{value}"{selected}>{label}</option>')
+    return "\n".join(options)
 
 
 def parse_hour(value: str) -> int:
