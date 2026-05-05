@@ -33,6 +33,27 @@ class CalendarClientTest(unittest.TestCase):
         self.assertEqual(events[1].summary, "All day reminder")
         self.assertTrue(events[1].all_day)
 
+    def test_parse_wrapped_service_response_events(self) -> None:
+        events = parse_calendar_events(
+            "calendar.family",
+            {
+                "service_response": {
+                    "calendar.family": {
+                        "events": [
+                            {
+                                "summary": "Appointment",
+                                "start": "2026-05-03T09:00:00-07:00",
+                                "end": "2026-05-03T10:00:00-07:00",
+                            }
+                        ]
+                    }
+                }
+            },
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].summary, "Appointment")
+
 
 if __name__ == "__main__":
     unittest.main()

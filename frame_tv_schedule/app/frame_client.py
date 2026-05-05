@@ -20,6 +20,12 @@ class ArtState:
     source: str = ""
 
 
+@dataclass(frozen=True)
+class TvArtItem:
+    art_id: str
+    title: str = ""
+
+
 class FrameClient:
     def __init__(self, config: AddonConfig) -> None:
         self.config = config
@@ -82,6 +88,29 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
+    async def list_available_art(self) -> list[TvArtItem]:
+        if self.config.push_mode == "dry_run":
+            logger.info("dry run: would list TV art")
+            return []
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("listing Samsung Frame art host=%s", self.config.tv_host)
+            return await asyncio.to_thread(self._list_available_art_sync)
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
+    async def select_art(self, art_id: str) -> None:
+        if self.config.push_mode == "dry_run":
+            logger.info("dry run: would select TV art id=%s", art_id)
+            return
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("selecting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
+            await asyncio.to_thread(self._select_art_sync, art_id)
+            return
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
     def _get_current_art_sync(self) -> ArtState:
         with self._tv() as tv:
             art = tv.art()
@@ -134,6 +163,25 @@ class FrameClient:
             art.select_image(target, show=True)
             art.set_artmode(True)
         logger.info("showing fallback art id=%s", target)
+
+    def _list_available_art_sync(self) -> list[TvArtItem]:
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            payload = art.available()
+        items = available_art_items(payload)
+        logger.info("listed %s Samsung Frame art item(s)", len(items))
+        return items
+
+    def _select_art_sync(self, art_id: str) -> None:
+        if not art_id:
+            raise RuntimeError("art_id is required")
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            art.select_image(art_id, show=True)
+            art.set_artmode(True)
+        logger.info("selected Samsung Frame art id=%s", art_id)
 
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
         return self._ensure_uploaded_image(image_path, "schedule")
@@ -252,6 +300,45 @@ def available_content_ids(payload: Any) -> set[str]:
             if content_id:
                 ids.add(content_id)
     return ids
+
+
+def available_art_items(payload: Any) -> list[TvArtItem]:
+    values = art_payload_items(payload)
+    items: list[TvArtItem] = []
+    for item in values:
+        content_id = extract_content_id(item)
+        if content_id:
+            items.append(TvArtItem(art_id=content_id, title=extract_art_title(item)))
+    return sorted(dedupe_art_items(items), key=lambda item: item.title or item.art_id)
+
+
+def art_payload_items(payload: Any) -> list[Any]:
+    if isinstance(payload, dict):
+        values = payload.get("items") or payload.get("content") or payload.get("data") or payload.get("available") or []
+    else:
+        values = payload
+    return values if isinstance(values, list) else []
+
+
+def dedupe_art_items(items: list[TvArtItem]) -> list[TvArtItem]:
+    seen: set[str] = set()
+    unique: list[TvArtItem] = []
+    for item in items:
+        if item.art_id in seen:
+            continue
+        seen.add(item.art_id)
+        unique.append(item)
+    return unique
+
+
+def extract_art_title(payload: Any) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    for key in ("title", "name", "file_name", "fileName", "content_name", "contentName"):
+        value = payload.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
 
 
 def extract_content_id(payload: Any) -> str:

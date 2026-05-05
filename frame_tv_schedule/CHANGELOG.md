@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Add top navigation with separate Schedule, Add-on Art, TV Art, and Diagnostics pages.
+- Add a TV Art page that can refresh art from the Samsung Frame TV, select existing TV art, and use TV art as fallback.
+- Add calendar diagnostics to show configured calendars, raw response shape, sample events, and event counts.
+
 ## 0.2.2
 
 - Fetch the full day's calendar events from Home Assistant's calendar REST endpoint so past events from today remain visible.

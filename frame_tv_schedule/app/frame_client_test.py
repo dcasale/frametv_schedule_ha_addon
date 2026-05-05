@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from .frame_client import available_content_ids, extract_content_id, file_sha256
+from .frame_client import available_art_items, available_content_ids, extract_content_id, file_sha256
 
 
 class FrameClientHelpersTest(unittest.TestCase):
@@ -14,6 +14,12 @@ class FrameClientHelpersTest(unittest.TestCase):
     def test_available_content_ids_handles_wrapped_lists(self) -> None:
         payload = {"items": [{"content_id": "MY-F0001"}, {"contentId": "MY-F0002"}]}
         self.assertEqual(available_content_ids(payload), {"MY-F0001", "MY-F0002"})
+
+    def test_available_art_items_extracts_ids_and_titles(self) -> None:
+        payload = {"items": [{"content_id": "MY-F0001", "title": "Landscape"}, {"contentId": "MY-F0002", "fileName": "Portrait"}]}
+        items = available_art_items(payload)
+        self.assertEqual([item.art_id for item in items], ["MY-F0001", "MY-F0002"])
+        self.assertEqual([item.title for item in items], ["Landscape", "Portrait"])
 
     def test_file_sha256_is_stable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

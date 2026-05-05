@@ -83,6 +83,8 @@ Use **Push Fallback Image** to show the configured fallback art. Configure eithe
 
 Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
 
+Use the **Diagnostics** page and select **Run Calendar Debug** if the generated image does not show expected events. The debug output lists the configured calendar entities, the Home Assistant calendar entities visible to the add-on, the raw response shape, and sample parsed events.
+
 ## Art library
 
 Use the **Art Library** section in the web UI to upload images into the add-on. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size.
@@ -93,6 +95,12 @@ After uploading art, use the dropdown to:
 - **Use Selected Art as Fallback**: make that image the fallback used by **Push Fallback Image**.
 
 This is the recommended safety path if restore-prior is unreliable on your TV. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image** before relying on automatic restore behavior.
+
+## TV art
+
+The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art.
+
+This requires `push_mode: local_frame_api` and a working `tv_host`. The list comes from the TV's local Art Mode API, so the exact titles and IDs depend on what your model and firmware return.
 
 ## Configuration fields
 
