@@ -4,6 +4,7 @@
 
 - Request Supervisor API access in addition to Home Assistant API access so `SUPERVISOR_TOKEN` is reliably injected on more add-on installs.
 - Log whether Home Assistant API token environment variables are available at startup and in calendar diagnostics.
+- Document reinstall/reload troubleshooting when Home Assistant has not applied add-on API permissions.
 
 ## 0.2.3
 

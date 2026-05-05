@@ -85,6 +85,20 @@ Use **Run Window Check** to test whether the add-on should show or restore the s
 
 Use the **Diagnostics** page and select **Run Calendar Debug** if the generated image does not show expected events. The debug output lists the configured calendar entities, the Home Assistant calendar entities visible to the add-on, the raw response shape, and sample parsed events.
 
+If diagnostics shows:
+
+```text
+Home Assistant supervisor token is unavailable
+```
+
+or the add-on logs show:
+
+```text
+Home Assistant API token available=False env_has_supervisor_token=False env_has_hassio_token=False
+```
+
+then the add-on is running without Home Assistant API permission. The add-on manifest includes `homeassistant_api: true`, but Home Assistant may not apply newly added API permissions to an already-installed add-on. Update to the latest add-on version first. If the token is still unavailable, uninstall the add-on, reload the add-on repository from the add-on store menu, install it again, restore the configuration values, and start it again.
+
 ## Art library
 
 Use the **Art Library** section in the web UI to upload images into the add-on. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size.

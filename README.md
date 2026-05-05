@@ -25,4 +25,6 @@ After starting the add-on, select **Open Web UI**, then select **Generate** to r
 
 The add-on does not need Apple credentials or Samsung account credentials. Apple Calendar credentials stay in Home Assistant's CalDAV integration. Samsung Frame control uses a local TV pairing prompt and stores the resulting token in the add-on config directory.
 
+If calendar diagnostics reports that the Home Assistant supervisor token is unavailable, update the add-on first. If it remains unavailable, uninstall and reinstall the add-on after reloading the repository so Home Assistant reapplies the add-on API permissions.
+
 Initial development can also be done by copying the `frame_tv_schedule` directory into a Home Assistant `/addons` folder and using the local add-ons repository.
