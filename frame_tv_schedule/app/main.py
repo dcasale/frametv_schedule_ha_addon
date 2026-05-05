@@ -148,8 +148,11 @@ async def diagnostics_page() -> HTMLResponse:
         <div class="status">{status}</div>
         <h1>Diagnostics</h1>
         <form method="post" action="./calendar-debug"><button>Run Calendar Debug</button></form>
+        <form method="post" action="./weather-debug"><button>Run Weather Debug</button></form>
         <h2>Calendar Debug</h2>
         <pre>{escape(json_dump(state.get("calendar_debug", {})))}</pre>
+        <h2>Weather Debug</h2>
+        <pre>{escape(json_dump(state.get("weather_debug", {})))}</pre>
         <h2>State</h2>
         <pre>{escape(json_dump(state))}</pre>
         <h2>Config</h2>
@@ -272,6 +275,14 @@ async def set_fallback_tv_art_route(request: Request, art_id: str = Form(...)) -
 @app.post("/calendar-debug", response_model=None)
 async def calendar_debug_route(request: Request) -> Response:
     result = await run_ui_action(calendar_debug)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./diagnostics", status_code=303)
+
+
+@app.post("/weather-debug", response_model=None)
+async def weather_debug_route(request: Request) -> Response:
+    result = await run_ui_action(weather_debug)
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./diagnostics", status_code=303)
@@ -468,6 +479,12 @@ async def calendar_debug() -> dict[str, str]:
     result = await calendar_client.debug_calendar_fetch(config.calendar_entities, start, end)
     state_store.update({"last_action": "Calendar debug completed.", "calendar_debug": result})
     return {"action": "calendar_debug"}
+
+
+async def weather_debug() -> dict[str, str]:
+    result = await calendar_client.debug_weather_fetch(config.weather_entity)
+    state_store.update({"last_action": "Weather debug completed.", "weather_debug": result})
+    return {"action": "weather_debug"}
 
 
 async def push_schedule_to_frame(action_label: str) -> ArtState:

@@ -92,31 +92,130 @@ class HomeAssistantCalendarClient:
             logger.warning("skipping weather fetch because the Home Assistant API token is unavailable")
             return []
 
+        forecast_types = weather_forecast_types(self.config.weather_forecast_type)
+        for forecast_type in forecast_types:
+            try:
+                data = await self._fetch_weather_forecasts_websocket(weather_entity, forecast_type)
+                forecasts = parse_weather_forecasts(weather_entity, data)
+                logger.info(
+                    "weather websocket fetch returned entity=%s type=%s forecast_count=%s",
+                    weather_entity,
+                    forecast_type,
+                    len(forecasts),
+                )
+                if forecasts:
+                    return forecasts[:limit]
+            except Exception:
+                logger.exception("weather websocket fetch failed entity=%s type=%s", weather_entity, forecast_type)
+
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",
         }
-        payload = {"entity_id": weather_entity, "type": "hourly"}
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.post(
-                f"{self.base_url}/services/weather/get_forecasts?return_response",
-                json=payload,
-                timeout=30,
-            ) as response:
-                if response.status >= 400:
-                    text = await response.text()
-                    logger.warning(
-                        "weather fetch failed entity=%s status=%s response=%s",
-                        weather_entity,
-                        response.status,
-                        text[:500],
-                    )
-                    return []
-                data = await response.json()
+            for forecast_type in forecast_types:
+                payload = {"entity_id": weather_entity, "type": forecast_type}
+                async with session.post(
+                    f"{self.base_url}/services/weather/get_forecasts?return_response",
+                    json=payload,
+                    timeout=30,
+                ) as response:
+                    if response.status >= 400:
+                        text = await response.text()
+                        logger.warning(
+                            "weather REST fetch failed entity=%s type=%s status=%s response=%s",
+                            weather_entity,
+                            forecast_type,
+                            response.status,
+                            text[:500],
+                        )
+                        continue
+                    data = await response.json()
+                forecasts = parse_weather_forecasts(weather_entity, data)
+                logger.info(
+                    "weather REST fetch returned entity=%s type=%s forecast_count=%s",
+                    weather_entity,
+                    forecast_type,
+                    len(forecasts),
+                )
+                if forecasts:
+                    return forecasts[:limit]
 
-        forecasts = parse_weather_forecasts(weather_entity, data)
-        logger.info("weather fetch returned entity=%s forecast_count=%s", weather_entity, len(forecasts))
-        return forecasts[:limit]
+        return []
+
+    async def _fetch_weather_forecasts_websocket(self, weather_entity: str, forecast_type: str) -> dict[str, Any]:
+        assert self.token
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(websocket_url(self.base_url), timeout=30) as ws:
+                auth_required = await ws.receive_json(timeout=30)
+                if auth_required.get("type") != "auth_required":
+                    raise RuntimeError(f"Unexpected WebSocket auth prompt: {auth_required}")
+
+                await ws.send_json({"type": "auth", "access_token": self.token})
+                auth_response = await ws.receive_json(timeout=30)
+                if auth_response.get("type") != "auth_ok":
+                    raise RuntimeError(f"Home Assistant WebSocket auth failed: {auth_response}")
+
+                await ws.send_json(
+                    {
+                        "id": 1,
+                        "type": "call_service",
+                        "domain": "weather",
+                        "service": "get_forecasts",
+                        "service_data": {"type": forecast_type},
+                        "target": {"entity_id": weather_entity},
+                        "return_response": True,
+                    }
+                )
+                response = await ws.receive_json(timeout=30)
+
+        if not response.get("success"):
+            raise RuntimeError(f"Home Assistant weather service failed: {response}")
+        result = response.get("result") or {}
+        return {"service_response": result.get("response") or {}}
+
+    async def debug_weather_fetch(self, weather_entity: str) -> dict[str, Any]:
+        weather_entity = weather_entity.strip()
+        result: dict[str, Any] = {
+            "entity": weather_entity,
+            "configured_forecast_type": self.config.weather_forecast_type,
+            "attempts": [],
+        }
+        if not weather_entity:
+            result["error"] = "No weather entity is configured"
+            return result
+        if not self.base_url or not self.token:
+            result["error"] = "Home Assistant API token is unavailable"
+            return result
+
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(f"{self.base_url}/states/{weather_entity}", timeout=30) as response:
+                result["state_status"] = response.status
+                if response.status < 400:
+                    state = await response.json()
+                    result["state"] = state.get("state")
+                    attributes = state.get("attributes") if isinstance(state.get("attributes"), dict) else {}
+                    result["friendly_name"] = attributes.get("friendly_name")
+                    result["supported_features"] = attributes.get("supported_features")
+                else:
+                    result["state_error"] = (await response.text())[:500]
+
+        for forecast_type in weather_forecast_types(self.config.weather_forecast_type):
+            attempt: dict[str, Any] = {"type": forecast_type}
+            try:
+                data = await self._fetch_weather_forecasts_websocket(weather_entity, forecast_type)
+                forecasts = parse_weather_forecasts(weather_entity, data)
+                attempt["forecast_count"] = len(forecasts)
+                attempt["sample_forecasts"] = [weather_to_debug_dict(forecast) for forecast in forecasts[:5]]
+                attempt["raw_keys"] = list(data.keys())
+            except Exception as error:
+                attempt["error"] = f"{type(error).__name__}: {error}"
+            result["attempts"].append(attempt)
+        return result
 
     async def debug_calendar_fetch(
         self,
@@ -235,6 +334,16 @@ def event_to_debug_dict(event: CalendarEvent) -> dict[str, Any]:
     }
 
 
+def weather_to_debug_dict(forecast: WeatherForecast) -> dict[str, Any]:
+    return {
+        "datetime": forecast.datetime.isoformat() if forecast.datetime else None,
+        "condition": forecast.condition,
+        "temperature": forecast.temperature,
+        "precipitation_probability": forecast.precipitation_probability,
+        "precipitation": forecast.precipitation,
+    }
+
+
 def parse_weather_forecasts(weather_entity: str, data: dict[str, Any]) -> list[WeatherForecast]:
     forecast_items = extract_weather_forecast_items(weather_entity, data)
     forecasts: list[WeatherForecast] = []
@@ -276,6 +385,20 @@ def coerce_int(value: Any) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def websocket_url(base_url: str) -> str:
+    if base_url.startswith("https://"):
+        return base_url.replace("https://", "wss://", 1).rstrip("/") + "/websocket"
+    if base_url.startswith("http://"):
+        return base_url.replace("http://", "ws://", 1).rstrip("/") + "/websocket"
+    return base_url.rstrip("/") + "/websocket"
+
+
+def weather_forecast_types(configured_type: str) -> list[str]:
+    if configured_type in {"hourly", "daily", "twice_daily"}:
+        return [configured_type]
+    return ["hourly", "daily", "twice_daily"]
 
 
 def parse_ha_datetime(value: str | dict[str, str] | None) -> datetime | None:

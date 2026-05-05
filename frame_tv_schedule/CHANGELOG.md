@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9
+
+- Fetch hourly weather forecasts through Home Assistant's WebSocket API to avoid REST service-response failures.
+- Add automatic weather forecast type fallback and weather diagnostics for entities such as `weather.forecast_home`.
+
 ## 0.2.8
 
 - Keep schedule image generation working when Home Assistant returns an error for hourly weather forecasts.

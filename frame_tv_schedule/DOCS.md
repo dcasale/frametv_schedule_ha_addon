@@ -167,9 +167,13 @@ This is intentional: the TV should be readable from across the room, not behave 
 
 ## Weather
 
-Set `weather_entity` to a Home Assistant weather entity, such as `weather.home`, to add an hourly weather strip to the bottom of the schedule image. The strip uses Home Assistant's `weather.get_forecasts` action with `type: hourly` and shows the next forecast slots with time, condition icon, temperature, and rain chance.
+Set `weather_entity` to a Home Assistant weather entity, such as `weather.forecast_home`, to add a weather strip to the bottom of the schedule image. Use the entity ID from **Settings** -> **Devices & services** -> **Entities**; the friendly name is not enough.
+
+The strip uses Home Assistant's `weather.get_forecasts` action. Leave `weather_forecast_type` set to `auto` unless you know the integration supports a specific forecast type. In `auto` mode, the add-on tries `hourly`, then `daily`, then `twice_daily` and uses the first forecast response that contains entries. Set it to `hourly` if you only want hourly forecast slots.
 
 Leave `weather_entity` blank to hide the weather strip and give the schedule more vertical room.
+
+Use the **Diagnostics** page and select **Run Weather Debug** if the generated image shows `weather_count: 0`. The debug output checks whether the configured weather entity exists, then shows which forecast types Home Assistant accepted and how many forecast entries each returned.
 
 ## TV push modes
 

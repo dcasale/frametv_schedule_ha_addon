@@ -40,6 +40,7 @@ class AddonConfig(BaseModel):
     tv_matte: str = "none"
     push_mode: Literal["dry_run", "local_frame_api", "home_assistant_service"] = "dry_run"
     weather_entity: str = ""
+    weather_forecast_type: Literal["auto", "hourly", "daily", "twice_daily"] = "auto"
     privacy_mode: bool = False
     home_assistant_url: str = "http://127.0.0.1:8123/api"
     home_assistant_token: str = ""

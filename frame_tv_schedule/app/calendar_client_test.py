@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-from .calendar_client import parse_calendar_events, parse_weather_forecasts
+from .calendar_client import parse_calendar_events, parse_weather_forecasts, weather_forecast_types, websocket_url
 
 
 class CalendarClientTest(unittest.TestCase):
@@ -82,6 +82,14 @@ class CalendarClientTest(unittest.TestCase):
         forecasts = parse_weather_forecasts("weather.home", {"message": "Internal Server Error"})
 
         self.assertEqual(forecasts, [])
+
+    def test_websocket_url_from_api_url(self) -> None:
+        self.assertEqual(websocket_url("http://127.0.0.1:8123/api"), "ws://127.0.0.1:8123/api/websocket")
+        self.assertEqual(websocket_url("https://ha.example.test/api"), "wss://ha.example.test/api/websocket")
+
+    def test_weather_forecast_types(self) -> None:
+        self.assertEqual(weather_forecast_types("hourly"), ["hourly"])
+        self.assertEqual(weather_forecast_types("auto"), ["hourly", "daily", "twice_daily"])
 
 
 if __name__ == "__main__":
