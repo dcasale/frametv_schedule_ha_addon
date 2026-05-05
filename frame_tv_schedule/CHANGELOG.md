@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8
+
+- Keep schedule image generation working when Home Assistant returns an error for hourly weather forecasts.
+
 ## 0.2.7
 
 - Add optional hourly weather forecast strip to the bottom of the generated schedule image.

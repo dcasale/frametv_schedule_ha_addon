@@ -78,6 +78,11 @@ class CalendarClientTest(unittest.TestCase):
         self.assertEqual(forecasts[0].temperature, 62.4)
         self.assertEqual(forecasts[0].precipitation_probability, 40)
 
+    def test_parse_weather_forecasts_empty_error_shape(self) -> None:
+        forecasts = parse_weather_forecasts("weather.home", {"message": "Internal Server Error"})
+
+        self.assertEqual(forecasts, [])
+
 
 if __name__ == "__main__":
     unittest.main()

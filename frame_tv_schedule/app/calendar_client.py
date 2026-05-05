@@ -103,7 +103,15 @@ class HomeAssistantCalendarClient:
                 json=payload,
                 timeout=30,
             ) as response:
-                response.raise_for_status()
+                if response.status >= 400:
+                    text = await response.text()
+                    logger.warning(
+                        "weather fetch failed entity=%s status=%s response=%s",
+                        weather_entity,
+                        response.status,
+                        text[:500],
+                    )
+                    return []
                 data = await response.json()
 
         forecasts = parse_weather_forecasts(weather_entity, data)
