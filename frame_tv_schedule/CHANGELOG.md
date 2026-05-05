@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.7
+
+- Add optional hourly weather forecast strip to the bottom of the generated schedule image.
+- Give event rows more vertical space and wrap event locations instead of cutting them off quickly.
+- Move TV art thumbnail fixing back to the backlog after real-TV thumbnails failed to render.
+
 ## 0.2.6
 
 - Add cached Samsung Frame TV art thumbnails to the TV Art page.

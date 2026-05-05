@@ -286,13 +286,15 @@ async def generate_schedule() -> Path:
         end.isoformat(),
     )
     events = await calendar_client.get_events(config.calendar_entities, start, end)
-    path = renderer.render(events)
-    logger.info("generated schedule image at %s with %s event(s)", path, len(events))
+    weather = await calendar_client.get_hourly_weather(config.weather_entity)
+    path = renderer.render(events, weather=weather)
+    logger.info("generated schedule image at %s with %s event(s) and %s weather forecast(s)", path, len(events), len(weather))
     state_store.update(
         {
-            "last_action": f"Generated schedule image with {len(events)} event(s).",
+            "last_action": f"Generated schedule image with {len(events)} event(s) and {len(weather)} weather forecast(s).",
             "last_generated": datetime.now(ZoneInfo(config.timezone)).isoformat(),
             "event_count": len(events),
+            "weather_count": len(weather),
         }
     )
     return path

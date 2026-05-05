@@ -165,6 +165,12 @@ The schedule image is designed for dim Frame TV Art Mode viewing. It shows a sma
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
+## Weather
+
+Set `weather_entity` to a Home Assistant weather entity, such as `weather.home`, to add an hourly weather strip to the bottom of the schedule image. The strip uses Home Assistant's `weather.get_forecasts` action with `type: hourly` and shows the next forecast slots with time, condition icon, temperature, and rain chance.
+
+Leave `weather_entity` blank to hide the weather strip and give the schedule more vertical room.
+
 ## TV push modes
 
 `dry_run` renders the image and logs what would happen. This is the safest starting point.

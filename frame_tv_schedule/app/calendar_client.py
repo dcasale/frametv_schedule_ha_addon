@@ -23,6 +23,15 @@ class CalendarEvent:
     location: str = ""
 
 
+@dataclass(frozen=True)
+class WeatherForecast:
+    datetime: datetime | None
+    condition: str
+    temperature: float | int | None
+    precipitation_probability: int | None
+    precipitation: float | int | None = None
+
+
 def supervisor_token() -> str:
     return os.environ.get("SUPERVISOR_TOKEN") or os.environ.get("HASSIO_TOKEN") or ""
 
@@ -74,6 +83,32 @@ class HomeAssistantCalendarClient:
 
         logger.info("calendar fetch total event_count=%s", len(events))
         return sorted(events, key=lambda event: event.start or datetime.max)
+
+    async def get_hourly_weather(self, weather_entity: str, limit: int = 8) -> list[WeatherForecast]:
+        weather_entity = weather_entity.strip()
+        if not weather_entity:
+            return []
+        if not self.base_url or not self.token:
+            logger.warning("skipping weather fetch because the Home Assistant API token is unavailable")
+            return []
+
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"entity_id": weather_entity, "type": "hourly"}
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(
+                f"{self.base_url}/services/weather/get_forecasts?return_response",
+                json=payload,
+                timeout=30,
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+
+        forecasts = parse_weather_forecasts(weather_entity, data)
+        logger.info("weather fetch returned entity=%s forecast_count=%s", weather_entity, len(forecasts))
+        return forecasts[:limit]
 
     async def debug_calendar_fetch(
         self,
@@ -190,6 +225,49 @@ def event_to_debug_dict(event: CalendarEvent) -> dict[str, Any]:
         "all_day": event.all_day,
         "location": event.location,
     }
+
+
+def parse_weather_forecasts(weather_entity: str, data: dict[str, Any]) -> list[WeatherForecast]:
+    forecast_items = extract_weather_forecast_items(weather_entity, data)
+    forecasts: list[WeatherForecast] = []
+    for item in forecast_items:
+        if not isinstance(item, dict):
+            continue
+        forecasts.append(
+            WeatherForecast(
+                datetime=parse_ha_datetime(item.get("datetime")),
+                condition=str(item.get("condition", "")),
+                temperature=item.get("temperature") if isinstance(item.get("temperature"), (int, float)) else None,
+                precipitation_probability=coerce_int(item.get("precipitation_probability")),
+                precipitation=item.get("precipitation") if isinstance(item.get("precipitation"), (int, float)) else None,
+            )
+        )
+    return forecasts
+
+
+def extract_weather_forecast_items(weather_entity: str, data: dict[str, Any]) -> list[dict[str, Any]]:
+    response = data.get("service_response") if isinstance(data.get("service_response"), dict) else data
+    entity_value = response.get(weather_entity) if isinstance(response, dict) else None
+    if isinstance(entity_value, dict) and isinstance(entity_value.get("forecast"), list):
+        return entity_value["forecast"]
+    if isinstance(response, dict):
+        for value in response.values():
+            if isinstance(value, dict) and isinstance(value.get("forecast"), list):
+                return value["forecast"]
+    return []
+
+
+def coerce_int(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return round(value)
+    if isinstance(value, str):
+        try:
+            return round(float(value))
+        except ValueError:
+            return None
+    return None
 
 
 def parse_ha_datetime(value: str | dict[str, str] | None) -> datetime | None:

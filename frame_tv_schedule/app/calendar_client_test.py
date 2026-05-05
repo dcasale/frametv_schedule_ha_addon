@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-from .calendar_client import parse_calendar_events
+from .calendar_client import parse_calendar_events, parse_weather_forecasts
 
 
 class CalendarClientTest(unittest.TestCase):
@@ -53,6 +53,30 @@ class CalendarClientTest(unittest.TestCase):
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].summary, "Appointment")
+
+    def test_parse_weather_forecasts(self) -> None:
+        forecasts = parse_weather_forecasts(
+            "weather.home",
+            {
+                "service_response": {
+                    "weather.home": {
+                        "forecast": [
+                            {
+                                "datetime": "2026-05-05T10:00:00-07:00",
+                                "condition": "rainy",
+                                "temperature": 62.4,
+                                "precipitation_probability": 40,
+                            }
+                        ]
+                    }
+                }
+            },
+        )
+
+        self.assertEqual(len(forecasts), 1)
+        self.assertEqual(forecasts[0].condition, "rainy")
+        self.assertEqual(forecasts[0].temperature, 62.4)
+        self.assertEqual(forecasts[0].precipitation_probability, 40)
 
 
 if __name__ == "__main__":
