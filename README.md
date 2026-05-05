@@ -27,4 +27,6 @@ The add-on does not need Apple credentials or Samsung account credentials. Apple
 
 If calendar diagnostics reports that the Home Assistant supervisor token is unavailable, update the add-on first. If it remains unavailable, uninstall and reinstall the add-on after reloading the repository so Home Assistant reapplies the add-on API permissions.
 
+If the Supervisor token is still unavailable, create a Home Assistant long-lived access token in your user profile and paste it into the add-on's `home_assistant_token` field. The default manual API URL is `http://127.0.0.1:8123/api`; change `home_assistant_url` if your Home Assistant instance is reachable at a different address from the add-on.
+
 Initial development can also be done by copying the `frame_tv_schedule` directory into a Home Assistant `/addons` folder and using the local add-ons repository.

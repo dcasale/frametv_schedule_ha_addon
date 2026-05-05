@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- Add optional Home Assistant API URL and long-lived access token settings as a fallback when `SUPERVISOR_TOKEN` is not injected.
+
 ## 0.2.4
 
 - Request Supervisor API access in addition to Home Assistant API access so `SUPERVISOR_TOKEN` is reliably injected on more add-on installs.

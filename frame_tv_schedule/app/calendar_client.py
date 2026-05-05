@@ -8,6 +8,8 @@ from typing import Any
 
 import aiohttp
 
+from .config import AddonConfig
+
 logger = logging.getLogger("frame_tv_schedule.calendar")
 
 
@@ -26,12 +28,15 @@ def supervisor_token() -> str:
 
 
 class HomeAssistantCalendarClient:
-    def __init__(self) -> None:
-        self.token = supervisor_token()
-        self.base_url = self.token and "http://supervisor/core/api"
+    def __init__(self, config: AddonConfig) -> None:
+        self.config = config
+        self.token = config.home_assistant_token.strip() or supervisor_token()
+        self.base_url = config.home_assistant_url.rstrip("/") if config.home_assistant_token.strip() else self.token and "http://supervisor/core/api"
         logger.info(
-            "Home Assistant API token available=%s env_has_supervisor_token=%s env_has_hassio_token=%s",
+            "Home Assistant API token available=%s manual_token_configured=%s base_url=%s env_has_supervisor_token=%s env_has_hassio_token=%s",
             bool(self.token),
+            bool(config.home_assistant_token.strip()),
+            self.base_url or "(not set)",
             bool(os.environ.get("SUPERVISOR_TOKEN")),
             bool(os.environ.get("HASSIO_TOKEN")),
         )
@@ -79,6 +84,8 @@ class HomeAssistantCalendarClient:
         if not self.base_url or not self.token:
             return {
                 "error": "Home Assistant supervisor token is unavailable",
+                "manual_token_configured": bool(self.config.home_assistant_token.strip()),
+                "home_assistant_url": self.config.home_assistant_url,
                 "env_has_supervisor_token": bool(os.environ.get("SUPERVISOR_TOKEN")),
                 "env_has_hassio_token": bool(os.environ.get("HASSIO_TOKEN")),
             }

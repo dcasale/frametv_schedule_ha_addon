@@ -99,6 +99,17 @@ Home Assistant API token available=False env_has_supervisor_token=False env_has_
 
 then the add-on is running without Home Assistant API permission. The add-on manifest includes `homeassistant_api: true`, but Home Assistant may not apply newly added API permissions to an already-installed add-on. Update to the latest add-on version first. If the token is still unavailable, uninstall the add-on, reload the add-on repository from the add-on store menu, install it again, restore the configuration values, and start it again.
 
+If the Supervisor token is still unavailable after reinstalling, configure the manual Home Assistant API fallback:
+
+1. In Home Assistant, open your user profile.
+2. Create a **Long-lived access token**.
+3. Paste it into the add-on's `home_assistant_token` field.
+4. Leave `home_assistant_url` as `http://127.0.0.1:8123/api` if Home Assistant Core is reachable from the add-on through the host network.
+5. If that URL does not work, use your Home Assistant URL with `/api` at the end, for example `http://homeassistant.local:8123/api` or `http://192.168.1.10:8123/api`.
+6. Restart the add-on and run **Diagnostics** -> **Run Calendar Debug** again.
+
+When a manual token is configured, the add-on uses that token instead of `SUPERVISOR_TOKEN`.
+
 ## Art library
 
 Use the **Art Library** section in the web UI to upload images into the add-on. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size.

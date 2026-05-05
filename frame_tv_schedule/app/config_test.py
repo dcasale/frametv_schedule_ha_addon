@@ -50,6 +50,12 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(len(config.display_windows), 1)
         self.assertEqual(config.display_windows[0].start, "07:00")
 
+    def test_manual_home_assistant_api_defaults_are_available(self) -> None:
+        config = AddonConfig()
+
+        self.assertEqual(config.home_assistant_url, "http://127.0.0.1:8123/api")
+        self.assertEqual(config.home_assistant_token, "")
+
 
 if __name__ == "__main__":
     unittest.main()

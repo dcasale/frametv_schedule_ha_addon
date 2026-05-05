@@ -26,7 +26,7 @@ logger = logging.getLogger("frame_tv_schedule")
 
 config = load_config()
 window_manager = ArtWindowManager(config)
-calendar_client = HomeAssistantCalendarClient()
+calendar_client = HomeAssistantCalendarClient(config)
 frame_client = FrameClient(config)
 renderer = ScheduleRenderer(config)
 state_store = StateStore()

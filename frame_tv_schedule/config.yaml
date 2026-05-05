@@ -1,5 +1,5 @@
 name: Frame TV Schedule
-version: "0.2.4"
+version: "0.2.5"
 slug: frame_tv_schedule
 description: Generate a daily schedule artwork image and show it on a Samsung Frame TV during selected windows.
 url: https://github.com/dcasale/frametv_schedule_ha_addon
@@ -46,6 +46,8 @@ options:
   push_mode: dry_run
   weather_entity: ""
   privacy_mode: false
+  home_assistant_url: http://127.0.0.1:8123/api
+  home_assistant_token: ""
 schema:
   calendar_entity: str?
   additional_calendar_entity_1: str?
@@ -71,3 +73,5 @@ schema:
   push_mode: list(dry_run|local_frame_api|home_assistant_service)
   weather_entity: str?
   privacy_mode: bool
+  home_assistant_url: str
+  home_assistant_token: password?
