@@ -24,6 +24,7 @@ class ArtState:
 class TvArtItem:
     art_id: str
     title: str = ""
+    thumbnail: str = ""
 
 
 class FrameClient:
@@ -111,6 +112,17 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
+    async def fetch_art_thumbnails(self, art_ids: list[str]) -> dict[str, bytes]:
+        if self.config.push_mode == "dry_run":
+            logger.info("dry run: would fetch %s TV art thumbnail(s)", len(art_ids))
+            return {}
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("fetching %s Samsung Frame thumbnail(s) host=%s", len(art_ids), self.config.tv_host)
+            return await asyncio.to_thread(self._fetch_art_thumbnails_sync, art_ids)
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
     def _get_current_art_sync(self) -> ArtState:
         with self._tv() as tv:
             art = tv.art()
@@ -182,6 +194,27 @@ class FrameClient:
             art.select_image(art_id, show=True)
             art.set_artmode(True)
         logger.info("selected Samsung Frame art id=%s", art_id)
+
+    def _fetch_art_thumbnails_sync(self, art_ids: list[str]) -> dict[str, bytes]:
+        thumbnails: dict[str, bytes] = {}
+        if not art_ids:
+            return thumbnails
+
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            for art_id in art_ids:
+                try:
+                    payload = art.get_thumbnail(art_id)
+                except Exception:
+                    logger.exception("failed to fetch Samsung Frame thumbnail art_id=%s", art_id)
+                    continue
+                data = thumbnail_bytes(payload, art_id)
+                if data:
+                    thumbnails[art_id] = data
+
+        logger.info("fetched %s/%s Samsung Frame thumbnail(s)", len(thumbnails), len(art_ids))
+        return thumbnails
 
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
         return self._ensure_uploaded_image(image_path, "schedule")
@@ -339,6 +372,22 @@ def extract_art_title(payload: Any) -> str:
         if isinstance(value, str) and value:
             return value
     return ""
+
+
+def thumbnail_bytes(payload: Any, art_id: str = "") -> bytes:
+    if isinstance(payload, (bytes, bytearray)):
+        return bytes(payload)
+    if isinstance(payload, dict):
+        if art_id and isinstance(payload.get(art_id), (bytes, bytearray)):
+            return bytes(payload[art_id])
+        for value in payload.values():
+            if isinstance(value, (bytes, bytearray)):
+                return bytes(value)
+    if isinstance(payload, list):
+        for value in payload:
+            if isinstance(value, (bytes, bytearray)):
+                return bytes(value)
+    return b""
 
 
 def extract_content_id(payload: Any) -> str:

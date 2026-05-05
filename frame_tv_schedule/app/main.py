@@ -5,10 +5,11 @@ from datetime import datetime
 from html import escape
 import logging
 from pathlib import Path
+import re
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import File, Form, Request, UploadFile
+from fastapi import File, Form, HTTPException, Request, UploadFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -31,6 +32,8 @@ frame_client = FrameClient(config)
 renderer = ScheduleRenderer(config)
 state_store = StateStore()
 art_library = ArtLibrary(width=config.image_width, height=config.image_height)
+thumbnail_cache_path = Path("/config/tv-art-thumbnails")
+thumbnail_cache_path.mkdir(parents=True, exist_ok=True)
 scheduler = AsyncIOScheduler(timezone=ZoneInfo(config.timezone))
 
 
@@ -100,6 +103,7 @@ async def tv_art_page() -> HTMLResponse:
     state = state_store.read()
     status = escape(str(state.get("last_action", "Ready")))
     tv_art_options = render_tv_art_options(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
+    tv_art_grid = render_tv_art_grid(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
     body = f"""
     <!doctype html>
     <html>
@@ -121,6 +125,7 @@ async def tv_art_page() -> HTMLResponse:
           <select name="art_id" required>{tv_art_options}</select>
           <button>Use Selected TV Art as Fallback</button>
         </form>
+        <div class="art-grid">{tv_art_grid}</div>
       </body>
     </html>
     """
@@ -165,6 +170,14 @@ async def image() -> FileResponse:
     if not renderer.output_path.exists():
         await generate_schedule()
     return FileResponse(renderer.output_path, media_type="image/png")
+
+
+@app.get("/tv-art-thumbnail/{filename}")
+async def tv_art_thumbnail(filename: str) -> FileResponse:
+    path = thumbnail_cache_path / Path(filename).name
+    if path.parent != thumbnail_cache_path or not path.exists():
+        raise HTTPException(status_code=404, detail="TV art thumbnail not found")
+    return FileResponse(path, media_type=media_type_for_thumbnail(path))
 
 
 @app.post("/generate", response_model=None)
@@ -420,13 +433,14 @@ async def set_fallback_art(art_name: str) -> dict[str, str]:
 
 async def refresh_tv_art() -> dict[str, str]:
     items = await frame_client.list_available_art()
+    cached_items = await cache_tv_art_thumbnails(items)
     state_store.update(
         {
-            "last_action": f"Loaded {len(items)} art item(s) from the Frame TV.",
-            "tv_art_items": [item.__dict__ for item in items],
+            "last_action": f"Loaded {len(cached_items)} art item(s) from the Frame TV.",
+            "tv_art_items": cached_items,
         }
     )
-    return {"action": "refresh_tv_art", "count": str(len(items))}
+    return {"action": "refresh_tv_art", "count": str(len(cached_items))}
 
 
 async def push_tv_art(art_id: str) -> dict[str, str]:
@@ -513,6 +527,96 @@ def render_tv_art_options(items: Any, selected_art_id: str = "") -> str:
     return "\n".join(options) or '<option value="">Refresh TV art first</option>'
 
 
+def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
+    if not isinstance(items, list) or not items:
+        return '<p>No TV art loaded yet.</p>'
+    cards = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        art_id = str(item.get("art_id", ""))
+        if not art_id:
+            continue
+        title = str(item.get("title", "")) or art_id
+        thumbnail = str(item.get("thumbnail", ""))
+        selected = " selected" if art_id == selected_art_id else ""
+        thumbnail_html = (
+            f'<img src="./tv-art-thumbnail/{escape(thumbnail)}" alt="{escape(title)}">'
+            if thumbnail
+            else '<div class="thumb-placeholder">No thumbnail</div>'
+        )
+        cards.append(
+            f"""
+            <article class="art-card{selected}">
+              {thumbnail_html}
+              <div class="art-title">{escape(title)}</div>
+              <div class="art-id">{escape(art_id)}</div>
+              <form method="post" action="./push-tv-art">
+                <input type="hidden" name="art_id" value="{escape(art_id)}">
+                <button>Show</button>
+              </form>
+              <form method="post" action="./set-fallback-tv-art">
+                <input type="hidden" name="art_id" value="{escape(art_id)}">
+                <button>Set Fallback</button>
+              </form>
+            </article>
+            """
+        )
+    return "\n".join(cards) or '<p>No TV art loaded yet.</p>'
+
+
+async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
+    art_items = [item.__dict__ for item in items]
+    missing_ids = [item["art_id"] for item in art_items if not existing_thumbnail_name(item["art_id"])]
+    thumbnails = await frame_client.fetch_art_thumbnails(missing_ids)
+    for art_id, data in thumbnails.items():
+        write_thumbnail(art_id, data)
+
+    for item in art_items:
+        item["thumbnail"] = existing_thumbnail_name(item["art_id"])
+    return art_items
+
+
+def write_thumbnail(art_id: str, data: bytes) -> Path:
+    suffix = thumbnail_suffix(data)
+    path = thumbnail_cache_path / f"{safe_thumbnail_stem(art_id)}{suffix}"
+    path.write_bytes(data)
+    return path
+
+
+def existing_thumbnail_name(art_id: str) -> str:
+    stem = safe_thumbnail_stem(art_id)
+    for suffix in (".jpg", ".png", ".webp", ".bin"):
+        path = thumbnail_cache_path / f"{stem}{suffix}"
+        if path.exists():
+            return path.name
+    return ""
+
+
+def safe_thumbnail_stem(art_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", art_id).strip(".-") or "art"
+
+
+def thumbnail_suffix(data: bytes) -> str:
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return ".webp"
+    return ".bin"
+
+
+def media_type_for_thumbnail(path: Path) -> str:
+    if path.suffix == ".jpg":
+        return "image/jpeg"
+    if path.suffix == ".png":
+        return "image/png"
+    if path.suffix == ".webp":
+        return "image/webp"
+    return "application/octet-stream"
+
+
 def schedule_page() -> HTMLResponse:
     state = state_store.read()
     image_exists = renderer.output_path.exists()
@@ -550,6 +654,12 @@ def page_styles() -> str:
           nav a { color: #1f2a2a; text-decoration: none; padding: 0.55rem 0.8rem; border: 1px solid #cfc8ba; background: rgba(255,255,255,0.55); }
           nav a.active { background: #1f2a2a; color: #fffdf6; border-color: #1f2a2a; }
           img { max-width: 100%; border: 1px solid #cfc8ba; }
+          .art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+          .art-card { background: rgba(255,255,255,0.65); border: 1px solid #cfc8ba; padding: 0.75rem; }
+          .art-card.selected { border-color: #1f2a2a; box-shadow: inset 0 0 0 2px #1f2a2a; }
+          .art-card img, .thumb-placeholder { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e8e0d2; border: 1px solid #cfc8ba; display: grid; place-items: center; color: #53605f; }
+          .art-title { font-weight: 700; margin-top: 0.65rem; overflow-wrap: anywhere; }
+          .art-id { color: #53605f; font-size: 0.85rem; overflow-wrap: anywhere; margin-top: 0.25rem; }
           button { padding: 0.65rem 1rem; margin-right: 0.5rem; }
           input, select { padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; max-width: 100%; }
           form { margin: 0.65rem 0; }

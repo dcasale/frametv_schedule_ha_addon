@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from .frame_client import available_art_items, available_content_ids, extract_content_id, file_sha256
+from .frame_client import available_art_items, available_content_ids, extract_content_id, file_sha256, thumbnail_bytes
 
 
 class FrameClientHelpersTest(unittest.TestCase):
@@ -20,6 +20,10 @@ class FrameClientHelpersTest(unittest.TestCase):
         items = available_art_items(payload)
         self.assertEqual([item.art_id for item in items], ["MY-F0001", "MY-F0002"])
         self.assertEqual([item.title for item in items], ["Landscape", "Portrait"])
+
+    def test_thumbnail_bytes_extracts_common_payloads(self) -> None:
+        self.assertEqual(thumbnail_bytes(bytearray(b"abc")), b"abc")
+        self.assertEqual(thumbnail_bytes({"MY-F0001": bytearray(b"def")}, "MY-F0001"), b"def")
 
     def test_file_sha256_is_stable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

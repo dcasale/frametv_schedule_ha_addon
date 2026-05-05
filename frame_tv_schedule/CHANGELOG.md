@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.6
+
+- Add cached Samsung Frame TV art thumbnails to the TV Art page.
+- Update Pillow to 12.2.0 to resolve open Dependabot alerts.
+
 ## 0.2.5
 
 - Add optional Home Assistant API URL and long-lived access token settings as a fallback when `SUPERVISOR_TOKEN` is not injected.

@@ -123,9 +123,9 @@ This is the recommended safety path if restore-prior is unreliable on your TV. U
 
 ## TV art
 
-The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art.
+The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
-This requires `push_mode: local_frame_api` and a working `tv_host`. The list comes from the TV's local Art Mode API, so the exact titles and IDs depend on what your model and firmware return.
+This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
 
 ## Configuration fields
 
