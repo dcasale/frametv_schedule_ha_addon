@@ -21,10 +21,20 @@ class CalendarEvent:
     location: str = ""
 
 
+def supervisor_token() -> str:
+    return os.environ.get("SUPERVISOR_TOKEN") or os.environ.get("HASSIO_TOKEN") or ""
+
+
 class HomeAssistantCalendarClient:
     def __init__(self) -> None:
-        self.base_url = os.environ.get("SUPERVISOR_TOKEN") and "http://supervisor/core/api"
-        self.token = os.environ.get("SUPERVISOR_TOKEN")
+        self.token = supervisor_token()
+        self.base_url = self.token and "http://supervisor/core/api"
+        logger.info(
+            "Home Assistant API token available=%s env_has_supervisor_token=%s env_has_hassio_token=%s",
+            bool(self.token),
+            bool(os.environ.get("SUPERVISOR_TOKEN")),
+            bool(os.environ.get("HASSIO_TOKEN")),
+        )
 
     async def get_events(
         self,
@@ -67,7 +77,11 @@ class HomeAssistantCalendarClient:
         end: datetime,
     ) -> dict[str, Any]:
         if not self.base_url or not self.token:
-            return {"error": "Home Assistant supervisor token is unavailable"}
+            return {
+                "error": "Home Assistant supervisor token is unavailable",
+                "env_has_supervisor_token": bool(os.environ.get("SUPERVISOR_TOKEN")),
+                "env_has_hassio_token": bool(os.environ.get("HASSIO_TOKEN")),
+            }
 
         headers = {
             "Authorization": f"Bearer {self.token}",

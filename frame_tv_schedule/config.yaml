@@ -1,5 +1,5 @@
 name: Frame TV Schedule
-version: "0.2.3"
+version: "0.2.4"
 slug: frame_tv_schedule
 description: Generate a daily schedule artwork image and show it on a Samsung Frame TV during selected windows.
 url: https://github.com/dcasale/frametv_schedule_ha_addon
@@ -14,6 +14,7 @@ ingress: true
 ingress_port: 8099
 panel_icon: mdi:calendar-clock
 homeassistant_api: true
+hassio_api: true
 host_network: true
 map:
   - type: addon_config

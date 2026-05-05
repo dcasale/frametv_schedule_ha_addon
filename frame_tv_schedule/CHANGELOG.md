@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Request Supervisor API access in addition to Home Assistant API access so `SUPERVISOR_TOKEN` is reliably injected on more add-on installs.
+- Log whether Home Assistant API token environment variables are available at startup and in calendar diagnostics.
+
 ## 0.2.3
 
 - Add top navigation with separate Schedule, Add-on Art, TV Art, and Diagnostics pages.
