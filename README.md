@@ -17,7 +17,7 @@ Add this repository to the Home Assistant add-on store, then install **Frame TV 
 
 Use the add-on's **Documentation** tab for setup details. The most important first-run fields are:
 
-- `calendar_entity`: the Home Assistant entity ID for your calendar, such as `calendar.granny`
+- `calendar_entity`: the Home Assistant entity ID for your calendar, such as `calendar.family`
 - `push_mode`: start with `dry_run`, then switch to `local_frame_api` after image generation works
 - `tv_host`: the static IP address assigned to the Samsung Frame TV
 

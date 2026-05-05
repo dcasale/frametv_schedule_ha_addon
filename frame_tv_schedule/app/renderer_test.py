@@ -21,8 +21,8 @@ class RendererTest(unittest.TestCase):
 
             result = renderer.render(
                 [
-                    CalendarEvent("calendar.granny", "Morning appointment with a longer readable title", datetime(2026, 5, 4, 8, 30, tzinfo=zone), datetime(2026, 5, 4, 9, 30, tzinfo=zone), False),
-                    CalendarEvent("calendar.granny", "Lunch", datetime(2026, 5, 4, 12, 0, tzinfo=zone), datetime(2026, 5, 4, 13, 0, tzinfo=zone), False),
+                    CalendarEvent("calendar.family", "Morning appointment with a longer readable title", datetime(2026, 5, 4, 8, 30, tzinfo=zone), datetime(2026, 5, 4, 9, 30, tzinfo=zone), False),
+                    CalendarEvent("calendar.family", "Lunch", datetime(2026, 5, 4, 12, 0, tzinfo=zone), datetime(2026, 5, 4, 13, 0, tzinfo=zone), False),
                 ],
                 now=datetime(2026, 5, 4, 7, 0, tzinfo=zone),
             )

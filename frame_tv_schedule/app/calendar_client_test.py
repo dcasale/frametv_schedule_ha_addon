@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+import unittest
+from datetime import datetime
+
+from .calendar_client import parse_calendar_events
+
+
+class CalendarClientTest(unittest.TestCase):
+    def test_parse_rest_calendar_events(self) -> None:
+        events = parse_calendar_events(
+            "calendar.family",
+            [
+                {
+                    "summary": "Breakfast",
+                    "start": {"dateTime": "2026-05-03T07:30:00-07:00"},
+                    "end": {"dateTime": "2026-05-03T08:00:00-07:00"},
+                    "location": "Kitchen",
+                },
+                {
+                    "summary": "All day reminder",
+                    "start": {"date": "2026-05-03"},
+                    "end": {"date": "2026-05-04"},
+                },
+            ],
+        )
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].summary, "Breakfast")
+        self.assertEqual(events[0].start, datetime.fromisoformat("2026-05-03T07:30:00-07:00"))
+        self.assertFalse(events[0].all_day)
+        self.assertEqual(events[0].location, "Kitchen")
+        self.assertEqual(events[1].summary, "All day reminder")
+        self.assertTrue(events[1].all_day)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -35,11 +35,17 @@ class ScheduleRenderer:
 
         draw.rectangle((0, 0, width, height), fill="#fbf7ec")
         draw.rounded_rectangle((margin - 48, top - 44, width - margin + 48, height - top + 42), radius=44, fill="#fffdf6")
-        divider_y = top + 310
-        draw.line((margin, divider_y, width - margin, divider_y), fill="#243232", width=8)
 
-        draw.text((margin, top), "Today's Schedule", fill="#172424", font=title_font)
-        draw.text((margin, top + 158), now.strftime("%A, %B %-d"), fill="#3f4d4c", font=date_font)
+        title = "Today's Schedule"
+        date_label = now.strftime("%A, %B %-d")
+        title_bottom = draw.textbbox((margin, top), title, font=title_font)[3]
+        date_y = title_bottom + 44
+        date_bottom = draw.textbbox((margin, date_y), date_label, font=date_font)[3]
+        divider_y = date_bottom + 78
+
+        draw.text((margin, top), title, fill="#172424", font=title_font)
+        draw.text((margin, date_y), date_label, fill="#3f4d4c", font=date_font)
+        draw.line((margin, divider_y, width - margin, divider_y), fill="#243232", width=8)
 
         all_day = [event for event in events if event.all_day]
         timed = [event for event in events if not event.all_day]

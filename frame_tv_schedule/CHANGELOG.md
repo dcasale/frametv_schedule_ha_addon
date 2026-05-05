@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.2.2
+
+- Fetch the full day's calendar events from Home Assistant's calendar REST endpoint so past events from today remain visible.
+- Increase dynamic spacing between the title and date line in the generated schedule image.
+
 ## 0.2.1
 
 - Install DejaVu fonts in the add-on image so the schedule renderer uses large TrueType text instead of Pillow's tiny fallback font.
-- Accept friendly calendar names such as `Granny` by normalizing them to Home Assistant calendar entity ids such as `calendar.granny`.
+- Accept friendly calendar names such as `Family` by normalizing them to Home Assistant calendar entity ids such as `calendar.family`.
 - Add calendar fetch logging for configured entities, date bounds, returned calendars, and event counts.
 
 ## 0.2.0

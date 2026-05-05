@@ -6,10 +6,10 @@ This add-on creates a daily schedule image from Home Assistant calendar entities
 
 For Apple Calendar, add your iCloud calendars to Home Assistant with the CalDAV integration. Then add the resulting `calendar.*` entity ID to the add-on's `calendar_entity` field.
 
-For the calendar named `Granny`, Home Assistant will usually create an entity ID like:
+For a calendar named `Family`, Home Assistant will usually create an entity ID like:
 
 ```text
-calendar.granny
+calendar.family
 ```
 
 Use the entity ID, not only the friendly calendar name. The add-on configuration field is a text field, so type or paste the entity ID manually.
@@ -18,18 +18,18 @@ To find the exact entity ID in Home Assistant:
 
 1. Go to **Settings** -> **Devices & services**.
 2. Open the **Entities** tab.
-3. Search for `Granny`.
+3. Search for `Family`.
 4. Open the matching calendar entity.
-5. Copy the entity ID shown by Home Assistant, for example `calendar.granny`.
+5. Copy the entity ID shown by Home Assistant, for example `calendar.family`.
 
-You can also go to **Developer tools** -> **States** and search for `Granny` or `calendar.`.
+You can also go to **Developer tools** -> **States** and search for `Family` or `calendar.`.
 
 If you want more calendars on the same schedule image, use `additional_calendar_entity_1` and `additional_calendar_entity_2`.
 
 Recommended first calendar configuration:
 
 ```text
-calendar_entity: calendar.granny
+calendar_entity: calendar.family
 additional_calendar_entity_1:
 additional_calendar_entity_2:
 ```
@@ -43,7 +43,7 @@ The CalDAV integration stores and manages your Apple Calendar credentials in Hom
 Start in `dry_run` mode. This lets you confirm that the add-on can read the calendar and render the schedule image before it tries to control the TV.
 
 ```text
-calendar_entity: calendar.granny
+calendar_entity: calendar.family
 timezone: America/Los_Angeles
 generate_time: 05:00
 refresh_minutes: 30
@@ -96,7 +96,7 @@ This is the recommended safety path if restore-prior is unreliable on your TV. U
 
 ## Configuration fields
 
-`calendar_entity` is the Home Assistant calendar entity ID, such as `calendar.granny`.
+`calendar_entity` is the Home Assistant calendar entity ID, such as `calendar.family`.
 
 `additional_calendar_entity_1` and `additional_calendar_entity_2` are optional extra calendars to include on the same schedule image.
 

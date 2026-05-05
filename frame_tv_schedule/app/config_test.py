@@ -10,15 +10,15 @@ from .config import AddonConfig, load_config
 class ConfigTest(unittest.TestCase):
     def test_simple_fields_populate_internal_calendar_and_windows(self) -> None:
         config = AddonConfig(
-            calendar_entity="calendar.granny",
-            additional_calendar_entity_1="calendar.family",
+            calendar_entity="calendar.family",
+            additional_calendar_entity_1="calendar.work",
             morning_window_start="06:15",
             morning_window_end="08:15",
             afternoon_window_start="14:45",
             afternoon_window_end="16:45",
         )
 
-        self.assertEqual(config.calendar_entities, ["calendar.granny", "calendar.family"])
+        self.assertEqual(config.calendar_entities, ["calendar.family", "calendar.work"])
         self.assertEqual(config.display_windows[0].start, "06:15")
         self.assertEqual(config.display_windows[0].end, "08:15")
         self.assertEqual(config.display_windows[1].start, "14:45")
@@ -26,11 +26,11 @@ class ConfigTest(unittest.TestCase):
 
     def test_calendar_friendly_names_are_normalized_to_entity_ids(self) -> None:
         config = AddonConfig(
-            calendar_entity="Granny",
-            additional_calendar_entity_1="Family Calendar",
+            calendar_entity="Family",
+            additional_calendar_entity_1="Work Calendar",
         )
 
-        self.assertEqual(config.calendar_entities, ["calendar.granny", "calendar.family_calendar"])
+        self.assertEqual(config.calendar_entities, ["calendar.family", "calendar.work_calendar"])
 
     def test_existing_list_options_still_load(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -38,7 +38,7 @@ class ConfigTest(unittest.TestCase):
             path.write_text(
                 """
                 {
-                  "calendar_entities": ["calendar.granny"],
+                  "calendar_entities": ["calendar.family"],
                   "display_windows": [{"start": "07:00", "end": "08:00"}]
                 }
                 """
@@ -46,7 +46,7 @@ class ConfigTest(unittest.TestCase):
 
             config = load_config(path)
 
-        self.assertEqual(config.calendar_entities, ["calendar.granny"])
+        self.assertEqual(config.calendar_entities, ["calendar.family"])
         self.assertEqual(len(config.display_windows), 1)
         self.assertEqual(config.display_windows[0].start, "07:00")
 
