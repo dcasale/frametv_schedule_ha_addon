@@ -4,7 +4,7 @@ from datetime import datetime
 import unittest
 from zoneinfo import ZoneInfo
 
-from .art_window_manager import ArtWindowManager, in_window
+from .art_window_manager import ArtWindowManager, generated_today, in_window
 from .config import AddonConfig, DisplayWindow
 
 
@@ -21,6 +21,24 @@ class ArtWindowManagerTest(unittest.TestCase):
 
         self.assertTrue(manager.should_show_schedule(datetime(2026, 5, 5, 14, 30, tzinfo=ZoneInfo("UTC"))))
         self.assertFalse(manager.should_show_schedule(datetime(2026, 5, 5, 15, 0, tzinfo=ZoneInfo("UTC"))))
+
+    def test_generated_today_uses_local_timezone(self) -> None:
+        zone = ZoneInfo("America/Los_Angeles")
+
+        self.assertTrue(
+            generated_today(
+                {"last_generated": "2026-05-06T05:00:00-07:00"},
+                datetime(2026, 5, 6, 6, 0, tzinfo=zone),
+                zone,
+            )
+        )
+        self.assertFalse(
+            generated_today(
+                {"last_generated": "2026-05-05T23:00:00-07:00"},
+                datetime(2026, 5, 6, 6, 0, tzinfo=zone),
+                zone,
+            )
+        )
 
 
 if __name__ == "__main__":

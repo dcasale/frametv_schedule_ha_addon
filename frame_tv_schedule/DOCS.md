@@ -75,7 +75,7 @@ That means the image was generated successfully, but you are viewing the raw API
 
 Use **Generate** to test calendar/image generation without touching the TV.
 
-Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window.
+Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window. This action regenerates the schedule image first.
 
 Use **Restore Prior Image** to restore the art that was active before the last calendar push. This only works after the add-on has successfully read and stored a prior art ID.
 
@@ -158,6 +158,8 @@ afternoon_window_end: "16:30"
 ```
 
 Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end restore.
+
+The add-on also generates a schedule at `generate_time`, which defaults to `05:00`. If that scheduled generation is missed, the window-start push checks the cached image date and regenerates before pushing whenever the saved image was generated before today.
 
 ## Schedule image readability
 

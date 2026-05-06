@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from .config import AddonConfig, DisplayWindow
@@ -35,3 +36,14 @@ def in_window(value: time, window: DisplayWindow) -> bool:
 def parse_time(value: str) -> time:
     hour, minute = value.split(":", 1)
     return time(hour=int(hour), minute=int(minute))
+
+
+def generated_today(state: dict[str, Any], moment: datetime, timezone: ZoneInfo) -> bool:
+    last_generated = state.get("last_generated")
+    if not isinstance(last_generated, str) or not last_generated:
+        return False
+    try:
+        generated_at = datetime.fromisoformat(last_generated)
+    except ValueError:
+        return False
+    return generated_at.astimezone(timezone).date() == moment.astimezone(timezone).date()

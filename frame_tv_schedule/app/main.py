@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from .art_library import ArtLibrary
-from .art_window_manager import ArtWindowManager
+from .art_window_manager import ArtWindowManager, generated_today
 from .calendar_client import HomeAssistantCalendarClient
 from .config import config_json, load_config
 from .frame_client import ArtState, FrameClient
@@ -348,7 +348,7 @@ async def tick() -> dict[str, str]:
 
 async def push_calendar_image() -> dict[str, str]:
     logger.info("push calendar requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
-    await push_schedule_to_frame("Manual calendar push")
+    await push_schedule_to_frame("Manual calendar push", force_generate=True)
     return {"action": "show_schedule"}
 
 
@@ -494,9 +494,8 @@ async def weather_debug() -> dict[str, str]:
     return {"action": "weather_debug"}
 
 
-async def push_schedule_to_frame(action_label: str) -> ArtState:
-    if not renderer.output_path.exists():
-        await generate_schedule()
+async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> ArtState:
+    await ensure_current_schedule_image(force=force_generate)
     previous = await frame_client.get_current_art()
     await frame_client.show_schedule(renderer.output_path)
     state_store.update(
@@ -509,6 +508,13 @@ async def push_schedule_to_frame(action_label: str) -> ArtState:
     )
     logger.info("%s showed schedule using push_mode=%s", action_label.lower(), config.push_mode)
     return previous
+
+
+async def ensure_current_schedule_image(force: bool = False) -> None:
+    now = datetime.now(ZoneInfo(config.timezone))
+    state = state_store.read()
+    if force or not renderer.output_path.exists() or not generated_today(state, now, ZoneInfo(config.timezone)):
+        await generate_schedule()
 
 
 async def run_ui_action(action: Any) -> dict[str, str]:

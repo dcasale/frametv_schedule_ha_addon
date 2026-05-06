@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.12
+
+- Regenerate the schedule image before pushing to the TV when the cached image was generated before today.
+- Force the manual calendar push to regenerate the schedule image so it never reuses stale output.
+
 ## 0.2.11
 
 - Restore UI-selected fallback TV art or uploaded add-on art when a schedule display window ends.
