@@ -157,7 +157,7 @@ afternoon_window_start: "14:30"
 afternoon_window_end: "16:30"
 ```
 
-Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure a fallback art ID or fallback image.
+Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end restore.
 
 ## Schedule image readability
 

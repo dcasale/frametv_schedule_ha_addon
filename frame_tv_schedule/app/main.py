@@ -330,12 +330,10 @@ async def tick() -> dict[str, str]:
         return {"action": "show_schedule"}
 
     if not should_show and active:
-        previous_art = state.get("previous_art") or {}
-        previous = ArtState(**previous_art) if previous_art else None
-        await frame_client.restore_art(previous)
+        await restore_window_image(state)
         state_store.update(
             {
-                "last_action": "Window check restored the previous art.",
+                "last_action": "Window check restored artwork after the schedule window.",
                 "schedule_active": False,
                 "schedule_push_mode": config.push_mode,
             }
@@ -373,48 +371,57 @@ async def restore_prior_image() -> dict[str, str]:
 
 
 async def push_fallback_image() -> dict[str, str]:
+    result = await show_selected_fallback_image()
+    state_store.update(
+        {
+            "last_action": result["message"],
+            "schedule_active": False,
+            "schedule_push_mode": config.push_mode,
+        }
+    )
+    return result
+
+
+async def restore_window_image(state: dict[str, Any]) -> None:
+    if config.restore_mode == "none":
+        await frame_client.restore_art(None)
+        return
+
+    previous_art = state.get("previous_art") or {}
+    previous = ArtState(**previous_art) if previous_art else None
+    if config.restore_mode == "previous_art" and previous and previous.art_id:
+        await frame_client.restore_art(previous)
+        return
+
+    await show_selected_fallback_image(allow_empty=True)
+
+
+async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, str]:
     state = state_store.read()
     fallback_tv_art_id = str(state.get("fallback_tv_art_id", ""))
     if fallback_tv_art_id:
         logger.info("push fallback requested from TV art id=%s", fallback_tv_art_id)
         await frame_client.select_art(fallback_tv_art_id)
-        state_store.update(
-            {
-                "last_action": f"Pushed fallback TV art {fallback_tv_art_id}.",
-                "schedule_active": False,
-                "schedule_push_mode": config.push_mode,
-            }
-        )
-        return {"action": "push_fallback", "art_id": fallback_tv_art_id}
+        return {"action": "push_fallback", "art_id": fallback_tv_art_id, "message": f"Pushed fallback TV art {fallback_tv_art_id}."}
 
     fallback_art_file = str(state.get("fallback_art_file", ""))
     if fallback_art_file:
         path = art_library.get(fallback_art_file)
         logger.info("push fallback requested from art library path=%s", path)
         await frame_client.show_image(path, label=f"fallback_{path.stem}")
-        state_store.update(
-            {
-                "last_action": f"Pushed fallback art {path.name} to the Frame TV.",
-                "schedule_active": False,
-                "schedule_push_mode": config.push_mode,
-            }
-        )
-        return {"action": "push_fallback", "image": path.name}
+        return {"action": "push_fallback", "image": path.name, "message": f"Pushed fallback art {path.name} to the Frame TV."}
 
     logger.info(
         "push fallback requested fallback_art_id=%s fallback_image=%s",
         config.fallback_art_id or "(not set)",
         config.fallback_image or "(not set)",
     )
+    if allow_empty and not config.fallback_art_id and not config.fallback_image:
+        await frame_client.restore_art(None)
+        return {"action": "push_fallback", "message": "No fallback image is configured."}
+
     await frame_client.show_fallback()
-    state_store.update(
-        {
-            "last_action": "Pushed fallback image to the Frame TV.",
-            "schedule_active": False,
-            "schedule_push_mode": config.push_mode,
-        }
-    )
-    return {"action": "push_fallback"}
+    return {"action": "push_fallback", "message": "Pushed fallback image to the Frame TV."}
 
 
 async def upload_art(art_file: UploadFile) -> dict[str, str]:

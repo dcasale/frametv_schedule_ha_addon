@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.11
+
+- Restore UI-selected fallback TV art or uploaded add-on art when a schedule display window ends.
+- Add schedule window boundary tests to confirm the end time is exclusive.
+
 ## 0.2.10
 
 - Show weather forecast times in the configured local timezone and start the strip at the current hour.
