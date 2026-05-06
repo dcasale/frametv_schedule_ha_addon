@@ -45,7 +45,6 @@ Start in `dry_run` mode. This lets you confirm that the add-on can read the cale
 ```text
 calendar_entity: calendar.family
 timezone: America/Los_Angeles
-generate_time: 05:00
 refresh_minutes: 30
 morning_window_start: 06:00
 morning_window_end: 08:00
@@ -157,9 +156,9 @@ afternoon_window_start: "14:30"
 afternoon_window_end: "16:30"
 ```
 
-Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end restore.
+At the start of each window, the add-on generates a fresh schedule image and then pushes it to the TV. This keeps weather and calendar data current for that window.
 
-The add-on also generates a schedule at `generate_time`, which defaults to `05:00`. If that scheduled generation is missed, the window-start push checks the cached image date and regenerates before pushing whenever the saved image was generated before today.
+Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end restore.
 
 ## Schedule image readability
 

@@ -23,7 +23,6 @@ class AddonConfig(BaseModel):
     image_width: int = 3840
     image_height: int = 2160
     refresh_minutes: int = 30
-    generate_time: str = "05:00"
     morning_window_start: str = "06:00"
     morning_window_end: str = "08:00"
     afternoon_window_start: str = "14:30"

@@ -1,5 +1,5 @@
 name: Frame TV Schedule
-version: "0.2.13"
+version: "0.2.14"
 slug: frame_tv_schedule
 description: Generate a daily schedule artwork image and show it on a Samsung Frame TV during selected windows.
 url: https://github.com/dcasale/frametv_schedule_ha_addon
@@ -29,7 +29,6 @@ options:
   image_width: 3840
   image_height: 2160
   refresh_minutes: 30
-  generate_time: "05:00"
   morning_window_start: "06:00"
   morning_window_end: "08:00"
   afternoon_window_start: "14:30"
@@ -57,7 +56,6 @@ schema:
   image_width: int
   image_height: int
   refresh_minutes: int
-  generate_time: str
   morning_window_start: str
   morning_window_end: str
   afternoon_window_start: str

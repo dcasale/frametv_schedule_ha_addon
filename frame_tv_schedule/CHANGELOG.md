@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.14
+
+- Generate a fresh schedule image at the start of each display window instead of using a preset generation time.
+- Route generate and window-check web UI actions through the shared success/failure status handling.
+- Group page actions into clearer subnav/action panels.
+
 ## 0.2.13
 
 - Normalize calendar event timestamps into the configured add-on timezone before sorting, fixing mixed timezone-aware and timezone-naive Home Assistant calendar responses.

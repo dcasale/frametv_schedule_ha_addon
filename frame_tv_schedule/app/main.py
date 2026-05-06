@@ -46,7 +46,6 @@ async def lifespan(_: FastAPI):
         config.calendar_entities,
         [window.model_dump() for window in config.display_windows],
     )
-    scheduler.add_job(generate_schedule, "cron", hour=parse_hour(config.generate_time), minute=parse_minute(config.generate_time))
     scheduler.add_job(tick, "interval", minutes=max(config.refresh_minutes, 1), next_run_time=datetime.now(ZoneInfo(config.timezone)))
     for window in config.display_windows:
         scheduler.add_job(tick, "cron", hour=parse_hour(window.start), minute=parse_minute(window.start))
@@ -67,7 +66,6 @@ async def index() -> HTMLResponse:
 @app.get("/art")
 async def art_page() -> HTMLResponse:
     state = state_store.read()
-    status = escape(str(state.get("last_action", "Ready")))
     art_options = render_art_options(art_library.list_images(), str(state.get("fallback_art_file", "")))
     body = f"""
     <!doctype html>
@@ -78,20 +76,22 @@ async def art_page() -> HTMLResponse:
       </head>
       <body>
         {nav("art")}
-        <div class="status">{status}</div>
+        {render_status(state)}
         <h1>Art Library</h1>
-        <form method="post" action="./upload-art" enctype="multipart/form-data">
-          <input type="file" name="art_file" accept="image/*" required>
-          <button>Upload Art</button>
-        </form>
-        <form method="post" action="./push-art">
-          <select name="art_name" required>{art_options}</select>
-          <button>Push Selected Art</button>
-        </form>
-        <form method="post" action="./set-fallback-art">
-          <select name="art_name" required>{art_options}</select>
-          <button>Use Selected Art as Fallback</button>
-        </form>
+        <div class="action-panel">
+          <form method="post" action="./upload-art" enctype="multipart/form-data">
+            <input type="file" name="art_file" accept="image/*" required>
+            <button>Upload Art</button>
+          </form>
+          <form method="post" action="./push-art">
+            <select name="art_name" required>{art_options}</select>
+            <button>Push Selected Art</button>
+          </form>
+          <form method="post" action="./set-fallback-art">
+            <select name="art_name" required>{art_options}</select>
+            <button>Use Selected Art as Fallback</button>
+          </form>
+        </div>
       </body>
     </html>
     """
@@ -101,7 +101,6 @@ async def art_page() -> HTMLResponse:
 @app.get("/tv-art")
 async def tv_art_page() -> HTMLResponse:
     state = state_store.read()
-    status = escape(str(state.get("last_action", "Ready")))
     tv_art_options = render_tv_art_options(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
     tv_art_grid = render_tv_art_grid(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
     body = f"""
@@ -113,18 +112,20 @@ async def tv_art_page() -> HTMLResponse:
       </head>
       <body>
         {nav("tv-art")}
-        <div class="status">{status}</div>
+        {render_status(state)}
         <h1>TV Art</h1>
         <p>Refresh the list from the Samsung Frame TV, then select an existing TV art item to display or use as fallback.</p>
-        <form method="post" action="./refresh-tv-art"><button>Refresh TV Art List</button></form>
-        <form method="post" action="./push-tv-art">
-          <select name="art_id" required>{tv_art_options}</select>
-          <button>Push Selected TV Art</button>
-        </form>
-        <form method="post" action="./set-fallback-tv-art">
-          <select name="art_id" required>{tv_art_options}</select>
-          <button>Use Selected TV Art as Fallback</button>
-        </form>
+        <div class="action-panel">
+          <form method="post" action="./refresh-tv-art"><button>Refresh TV Art List</button></form>
+          <form method="post" action="./push-tv-art">
+            <select name="art_id" required>{tv_art_options}</select>
+            <button>Push Selected TV Art</button>
+          </form>
+          <form method="post" action="./set-fallback-tv-art">
+            <select name="art_id" required>{tv_art_options}</select>
+            <button>Use Selected TV Art as Fallback</button>
+          </form>
+        </div>
         <div class="art-grid">{tv_art_grid}</div>
       </body>
     </html>
@@ -135,7 +136,6 @@ async def tv_art_page() -> HTMLResponse:
 @app.get("/diagnostics")
 async def diagnostics_page() -> HTMLResponse:
     state = state_store.read()
-    status = escape(str(state.get("last_action", "Ready")))
     body = f"""
     <!doctype html>
     <html>
@@ -145,10 +145,12 @@ async def diagnostics_page() -> HTMLResponse:
       </head>
       <body>
         {nav("diagnostics")}
-        <div class="status">{status}</div>
+        {render_status(state)}
         <h1>Diagnostics</h1>
-        <form method="post" action="./calendar-debug"><button>Run Calendar Debug</button></form>
-        <form method="post" action="./weather-debug"><button>Run Weather Debug</button></form>
+        <div class="subnav">
+          <form method="post" action="./calendar-debug"><button>Run Calendar Debug</button></form>
+          <form method="post" action="./weather-debug"><button>Run Weather Debug</button></form>
+        </div>
         <h2>Calendar Debug</h2>
         <pre>{escape(json_dump(state.get("calendar_debug", {})))}</pre>
         <h2>Weather Debug</h2>
@@ -185,8 +187,7 @@ async def tv_art_thumbnail(filename: str) -> FileResponse:
 
 @app.post("/generate", response_model=None)
 async def generate_route(request: Request) -> Response:
-    path = await generate_schedule()
-    result = {"image": str(path)}
+    result = await run_ui_action(generate_schedule_action)
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./", status_code=303)
@@ -194,7 +195,7 @@ async def generate_route(request: Request) -> Response:
 
 @app.post("/tick", response_model=None)
 async def tick_route(request: Request) -> Response:
-    result = await tick()
+    result = await run_ui_action(tick)
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./", status_code=303)
@@ -312,6 +313,11 @@ async def generate_schedule() -> Path:
     return path
 
 
+async def generate_schedule_action() -> dict[str, str]:
+    path = await generate_schedule()
+    return {"action": "generate", "image": str(path), "message": "Generated schedule image."}
+
+
 async def tick() -> dict[str, str]:
     should_show = window_manager.should_show_schedule()
     state = state_store.read()
@@ -326,8 +332,8 @@ async def tick() -> dict[str, str]:
     )
 
     if should_show and not active:
-        previous = await push_schedule_to_frame("Window check")
-        return {"action": "show_schedule"}
+        previous = await push_schedule_to_frame("Window check", force_generate=True)
+        return {"action": "show_schedule", "previous_art": previous.art_id, "message": "Generated and pushed schedule image for the active display window."}
 
     if not should_show and active:
         await restore_window_image(state)
@@ -339,17 +345,17 @@ async def tick() -> dict[str, str]:
             }
         )
         logger.info("window check restored art")
-        return {"action": "restore_art"}
+        return {"action": "restore_art", "message": "Restored artwork after the schedule window."}
 
     state_store.update({"last_action": "Window check completed. No display change was needed."})
     logger.info("window check completed with no display change")
-    return {"action": "no_change"}
+    return {"action": "no_change", "message": "Window check completed. No display change was needed."}
 
 
 async def push_calendar_image() -> dict[str, str]:
     logger.info("push calendar requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
     await push_schedule_to_frame("Manual calendar push", force_generate=True)
-    return {"action": "show_schedule"}
+    return {"action": "show_schedule", "message": "Generated and pushed the calendar image."}
 
 
 async def restore_prior_image() -> dict[str, str]:
@@ -367,7 +373,7 @@ async def restore_prior_image() -> dict[str, str]:
             "schedule_push_mode": config.push_mode,
         }
     )
-    return {"action": "restore_prior"}
+    return {"action": "restore_prior", "message": "Restored prior image on the Frame TV."}
 
 
 async def push_fallback_image() -> dict[str, str]:
@@ -428,7 +434,7 @@ async def upload_art(art_file: UploadFile) -> dict[str, str]:
     path = await art_library.save_upload(art_file)
     state_store.update({"last_action": f"Uploaded art image {path.name}."})
     logger.info("uploaded art library image path=%s", path)
-    return {"action": "upload_art", "image": path.name}
+    return {"action": "upload_art", "image": path.name, "message": f"Uploaded art image {path.name}."}
 
 
 async def push_library_art(art_name: str) -> dict[str, str]:
@@ -442,14 +448,14 @@ async def push_library_art(art_name: str) -> dict[str, str]:
             "schedule_push_mode": config.push_mode,
         }
     )
-    return {"action": "push_art", "image": path.name}
+    return {"action": "push_art", "image": path.name, "message": f"Pushed selected art {path.name} to the Frame TV."}
 
 
 async def set_fallback_art(art_name: str) -> dict[str, str]:
     path = art_library.get(art_name)
     state_store.update({"last_action": f"Set fallback art to {path.name}.", "fallback_art_file": path.name, "fallback_tv_art_id": ""})
     logger.info("fallback art set to path=%s", path)
-    return {"action": "set_fallback_art", "image": path.name}
+    return {"action": "set_fallback_art", "image": path.name, "message": f"Set fallback art to {path.name}."}
 
 
 async def refresh_tv_art() -> dict[str, str]:
@@ -461,7 +467,7 @@ async def refresh_tv_art() -> dict[str, str]:
             "tv_art_items": cached_items,
         }
     )
-    return {"action": "refresh_tv_art", "count": str(len(cached_items))}
+    return {"action": "refresh_tv_art", "count": str(len(cached_items)), "message": f"Loaded {len(cached_items)} art item(s) from the Frame TV."}
 
 
 async def push_tv_art(art_id: str) -> dict[str, str]:
@@ -473,25 +479,25 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
             "schedule_push_mode": config.push_mode,
         }
     )
-    return {"action": "push_tv_art", "art_id": art_id}
+    return {"action": "push_tv_art", "art_id": art_id, "message": f"Pushed TV art {art_id}."}
 
 
 async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
     state_store.update({"last_action": f"Set fallback TV art to {art_id}.", "fallback_tv_art_id": art_id, "fallback_art_file": ""})
-    return {"action": "set_fallback_tv_art", "art_id": art_id}
+    return {"action": "set_fallback_tv_art", "art_id": art_id, "message": f"Set fallback TV art to {art_id}."}
 
 
 async def calendar_debug() -> dict[str, str]:
     start, end = window_manager.today_bounds()
     result = await calendar_client.debug_calendar_fetch(config.calendar_entities, start, end)
     state_store.update({"last_action": "Calendar debug completed.", "calendar_debug": result})
-    return {"action": "calendar_debug"}
+    return {"action": "calendar_debug", "message": "Calendar debug completed."}
 
 
 async def weather_debug() -> dict[str, str]:
     result = await calendar_client.debug_weather_fetch(config.weather_entity)
     state_store.update({"last_action": "Weather debug completed.", "weather_debug": result})
-    return {"action": "weather_debug"}
+    return {"action": "weather_debug", "message": "Weather debug completed."}
 
 
 async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> ArtState:
@@ -654,7 +660,6 @@ def schedule_page() -> HTMLResponse:
     state = state_store.read()
     image_exists = renderer.output_path.exists()
     image_version = int(renderer.output_path.stat().st_mtime) if image_exists else 0
-    status = escape(str(state.get("last_action", "Ready")))
     body = f"""
     <!doctype html>
     <html>
@@ -664,13 +669,15 @@ def schedule_page() -> HTMLResponse:
       </head>
       <body>
         {nav("schedule")}
-        <div class="status">{status}</div>
+        {render_status(state)}
         <h1>Schedule</h1>
-        <form method="post" action="./generate"><button>Generate</button></form>
-        <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
-        <form method="post" action="./restore-prior"><button>Restore Prior Image</button></form>
-        <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
-        <form method="post" action="./tick"><button>Run Window Check</button></form>
+        <div class="subnav">
+          <form method="post" action="./generate"><button>Generate</button></form>
+          <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
+          <form method="post" action="./restore-prior"><button>Restore Prior Image</button></form>
+          <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
+          <form method="post" action="./tick"><button>Run Window Check</button></form>
+        </div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
         {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ''}
       </body>
@@ -687,16 +694,21 @@ def page_styles() -> str:
           nav a { color: #1f2a2a; text-decoration: none; padding: 0.55rem 0.8rem; border: 1px solid #cfc8ba; background: rgba(255,255,255,0.55); }
           nav a.active { background: #1f2a2a; color: #fffdf6; border-color: #1f2a2a; }
           img { max-width: 100%; border: 1px solid #cfc8ba; }
+          .subnav, .action-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; padding: 0.75rem; margin: 1rem 0 1.25rem; background: rgba(255,255,255,0.55); border: 1px solid #cfc8ba; }
+          .action-panel { align-items: stretch; flex-direction: column; max-width: 58rem; }
           .art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
           .art-card { background: rgba(255,255,255,0.65); border: 1px solid #cfc8ba; padding: 0.75rem; }
           .art-card.selected { border-color: #1f2a2a; box-shadow: inset 0 0 0 2px #1f2a2a; }
           .art-card img, .thumb-placeholder { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e8e0d2; border: 1px solid #cfc8ba; display: grid; place-items: center; color: #53605f; }
           .art-title { font-weight: 700; margin-top: 0.65rem; overflow-wrap: anywhere; }
           .art-id { color: #53605f; font-size: 0.85rem; overflow-wrap: anywhere; margin-top: 0.25rem; }
-          button { padding: 0.65rem 1rem; margin-right: 0.5rem; }
+          button { padding: 0.65rem 1rem; border: 1px solid #1f2a2a; background: #fffdf6; color: #1f2a2a; cursor: pointer; }
+          button:hover { background: #1f2a2a; color: #fffdf6; }
           input, select { padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; max-width: 100%; }
-          form { margin: 0.65rem 0; }
+          form { margin: 0; }
           .status { background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }
+          .status.success { border-left: 0.35rem solid #46725d; }
+          .status.error { border-left: 0.35rem solid #a54434; }
           pre { background: rgba(255,255,255,0.65); padding: 1rem; overflow: auto; }
         </style>
     """
@@ -712,6 +724,12 @@ def nav(active: str) -> str:
     return "<nav>" + "".join(
         f'<a class="{"active" if key == active else ""}" href="{href}">{label}</a>' for key, href, label in links
     ) + "</nav>"
+
+
+def render_status(state: dict[str, Any]) -> str:
+    message = str(state.get("last_action", "Ready"))
+    status_class = "error" if message.startswith("Action failed:") else "success"
+    return f'<div class="status {status_class}">{escape(message)}</div>'
 
 
 def json_dump(value: Any) -> str:
