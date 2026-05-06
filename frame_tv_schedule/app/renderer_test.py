@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from .calendar_client import CalendarEvent, WeatherForecast
 from .config import AddonConfig
-from .renderer import ScheduleRenderer
+from .renderer import ScheduleRenderer, visible_weather_forecasts, weather_rain_label
 
 
 class RendererTest(unittest.TestCase):
@@ -32,6 +32,31 @@ class RendererTest(unittest.TestCase):
             )
 
         self.assertEqual(result, path)
+
+    def test_weather_forecasts_are_filtered_and_converted_to_local_time(self) -> None:
+        zone = ZoneInfo("America/Los_Angeles")
+        utc = ZoneInfo("UTC")
+        forecasts = visible_weather_forecasts(
+            [
+                WeatherForecast(datetime(2026, 5, 4, 13, 0, tzinfo=utc), condition="cloudy", temperature=60, precipitation_probability=10),
+                WeatherForecast(datetime(2026, 5, 4, 14, 0, tzinfo=utc), condition="rainy", temperature=61, precipitation_probability=45),
+            ],
+            now=datetime(2026, 5, 4, 7, 20, tzinfo=zone),
+            timezone=zone,
+        )
+
+        self.assertEqual(len(forecasts), 1)
+        self.assertEqual(forecasts[0].datetime, datetime(2026, 5, 4, 7, 0, tzinfo=zone))
+
+    def test_weather_rain_label_uses_precipitation_fallback(self) -> None:
+        self.assertEqual(
+            weather_rain_label(WeatherForecast(datetime=None, condition="", temperature=None, precipitation_probability=45)),
+            "45% rain",
+        )
+        self.assertEqual(
+            weather_rain_label(WeatherForecast(datetime=None, condition="", temperature=None, precipitation_probability=None, precipitation=0.2)),
+            "0.2 rain",
+        )
 
 
 if __name__ == "__main__":

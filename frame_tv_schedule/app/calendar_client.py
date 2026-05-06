@@ -84,7 +84,7 @@ class HomeAssistantCalendarClient:
         logger.info("calendar fetch total event_count=%s", len(events))
         return sorted(events, key=lambda event: event.start or datetime.max)
 
-    async def get_hourly_weather(self, weather_entity: str, limit: int = 8) -> list[WeatherForecast]:
+    async def get_hourly_weather(self, weather_entity: str, limit: int = 24) -> list[WeatherForecast]:
         weather_entity = weather_entity.strip()
         if not weather_entity:
             return []
@@ -354,9 +354,19 @@ def parse_weather_forecasts(weather_entity: str, data: dict[str, Any]) -> list[W
             WeatherForecast(
                 datetime=parse_ha_datetime(item.get("datetime")),
                 condition=str(item.get("condition", "")),
-                temperature=item.get("temperature") if isinstance(item.get("temperature"), (int, float)) else None,
-                precipitation_probability=coerce_int(item.get("precipitation_probability")),
-                precipitation=item.get("precipitation") if isinstance(item.get("precipitation"), (int, float)) else None,
+                temperature=coerce_number(first_present(item, "temperature", "native_temperature")),
+                precipitation_probability=coerce_int(
+                    first_present(
+                        item,
+                        "precipitation_probability",
+                        "probability_of_precipitation",
+                        "precipitation_chance",
+                        "rain_probability",
+                        "chance_of_rain",
+                        "pop",
+                    )
+                ),
+                precipitation=coerce_number(first_present(item, "precipitation", "native_precipitation", "rain")),
             )
         )
     return forecasts
@@ -380,10 +390,30 @@ def coerce_int(value: Any) -> int | None:
     if isinstance(value, float):
         return round(value)
     if isinstance(value, str):
+        clean = value.strip().removesuffix("%").strip()
         try:
-            return round(float(value))
+            return round(float(clean))
         except ValueError:
             return None
+    return None
+
+
+def coerce_number(value: Any) -> float | int | None:
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        clean = value.strip().removesuffix("%").strip()
+        try:
+            return float(clean)
+        except ValueError:
+            return None
+    return None
+
+
+def first_present(data: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in data and data[key] is not None:
+            return data[key]
     return None
 
 

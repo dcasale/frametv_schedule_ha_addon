@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10
+
+- Show weather forecast times in the configured local timezone and start the strip at the current hour.
+- Let the weather strip fill the available horizontal space instead of always stopping at eight forecast slots.
+- Accept additional precipitation probability field names from Home Assistant weather providers.
+
 ## 0.2.9
 
 - Fetch hourly weather forecasts through Home Assistant's WebSocket API to avoid REST service-response failures.

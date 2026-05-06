@@ -78,6 +78,29 @@ class CalendarClientTest(unittest.TestCase):
         self.assertEqual(forecasts[0].temperature, 62.4)
         self.assertEqual(forecasts[0].precipitation_probability, 40)
 
+    def test_parse_weather_forecasts_accepts_alternate_provider_fields(self) -> None:
+        forecasts = parse_weather_forecasts(
+            "weather.forecast_home",
+            {
+                "service_response": {
+                    "weather.forecast_home": {
+                        "forecast": [
+                            {
+                                "datetime": "2026-05-05T14:00:00+00:00",
+                                "condition": "partlycloudy",
+                                "native_temperature": "68",
+                                "probability_of_precipitation": "35%",
+                            }
+                        ]
+                    }
+                }
+            },
+        )
+
+        self.assertEqual(len(forecasts), 1)
+        self.assertEqual(forecasts[0].temperature, 68.0)
+        self.assertEqual(forecasts[0].precipitation_probability, 35)
+
     def test_parse_weather_forecasts_empty_error_shape(self) -> None:
         forecasts = parse_weather_forecasts("weather.home", {"message": "Internal Server Error"})
 

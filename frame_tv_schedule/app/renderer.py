@@ -114,10 +114,12 @@ class ScheduleRenderer:
             if len(timed) > max_events:
                 draw.text((margin, content_bottom + 20), f"+ {len(timed) - max_events} more events today", fill="#3f4d4c", font=small_font)
 
-        if weather:
+        display_weather = visible_weather_forecasts(weather, now, self.timezone)
+
+        if display_weather:
             draw_weather_band(
                 draw,
-                weather[:8],
+                display_weather,
                 (margin, weather_top, width - margin, height - 92),
                 weather_time_font,
                 weather_temp_font,
@@ -193,6 +195,8 @@ def draw_weather_band(
         return
 
     grid_top = top + 84
+    max_columns = max(1, int((right - left - 72) / 360))
+    forecasts = forecasts[:max_columns]
     column_width = (right - left - 72) / len(forecasts)
     available_height = bottom - grid_top
     compact = available_height < 190
@@ -209,10 +213,38 @@ def draw_weather_band(
         temp_label = f"{round(forecast.temperature)}°" if forecast.temperature is not None else "--"
         temp_y = grid_top + (92 if compact else 118)
         draw.text((center_x - text_width(draw, temp_label, temp_font) // 2, temp_y), temp_label, fill="#fffdf6", font=temp_font)
-        rain_value = forecast.precipitation_probability
-        rain_label = f"{rain_value}% rain" if rain_value is not None else "rain --"
+        rain_label = weather_rain_label(forecast)
         rain_y = grid_top + (150 if compact else 184)
         draw.text((center_x - text_width(draw, rain_label, detail_font) // 2, rain_y), rain_label, fill="#b9d8e7", font=detail_font)
+
+
+def visible_weather_forecasts(forecasts: list[WeatherForecast], now: datetime, timezone: ZoneInfo) -> list[WeatherForecast]:
+    current_hour = now.astimezone(timezone).replace(minute=0, second=0, microsecond=0)
+    visible: list[WeatherForecast] = []
+    for forecast in forecasts:
+        forecast_time = forecast.datetime
+        if forecast_time:
+            forecast_time = forecast_time.astimezone(timezone)
+            if forecast_time < current_hour:
+                continue
+        visible.append(
+            WeatherForecast(
+                datetime=forecast_time,
+                condition=forecast.condition,
+                temperature=forecast.temperature,
+                precipitation_probability=forecast.precipitation_probability,
+                precipitation=forecast.precipitation,
+            )
+        )
+    return visible
+
+
+def weather_rain_label(forecast: WeatherForecast) -> str:
+    if forecast.precipitation_probability is not None:
+        return f"{forecast.precipitation_probability}% rain"
+    if forecast.precipitation is not None:
+        return f"{forecast.precipitation:g} rain"
+    return "-- rain"
 
 
 def draw_weather_icon(draw: ImageDraw.ImageDraw, center: tuple[int, int], size: int, condition: str) -> None:

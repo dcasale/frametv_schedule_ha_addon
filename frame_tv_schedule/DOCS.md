@@ -169,7 +169,7 @@ This is intentional: the TV should be readable from across the room, not behave 
 
 Set `weather_entity` to a Home Assistant weather entity, such as `weather.forecast_home`, to add a weather strip to the bottom of the schedule image. Use the entity ID from **Settings** -> **Devices & services** -> **Entities**; the friendly name is not enough.
 
-The strip uses Home Assistant's `weather.get_forecasts` action. Leave `weather_forecast_type` set to `auto` unless you know the integration supports a specific forecast type. In `auto` mode, the add-on tries `hourly`, then `daily`, then `twice_daily` and uses the first forecast response that contains entries. Set it to `hourly` if you only want hourly forecast slots.
+The strip uses Home Assistant's `weather.get_forecasts` action. Leave `weather_forecast_type` set to `auto` unless you know the integration supports a specific forecast type. In `auto` mode, the add-on tries `hourly`, then `daily`, then `twice_daily` and uses the first forecast response that contains entries. Set it to `hourly` if you only want hourly forecast slots. Forecast times are converted to the configured add-on timezone and the strip starts at the current hour.
 
 Leave `weather_entity` blank to hide the weather strip and give the schedule more vertical room.
 
