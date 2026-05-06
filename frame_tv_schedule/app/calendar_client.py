@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 import os
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import aiohttp
 
@@ -39,6 +40,7 @@ def supervisor_token() -> str:
 class HomeAssistantCalendarClient:
     def __init__(self, config: AddonConfig) -> None:
         self.config = config
+        self.timezone = ZoneInfo(config.timezone)
         self.token = config.home_assistant_token.strip() or supervisor_token()
         self.base_url = config.home_assistant_url.rstrip("/") if config.home_assistant_token.strip() else self.token and "http://supervisor/core/api"
         logger.info(
@@ -77,12 +79,13 @@ class HomeAssistantCalendarClient:
         async with aiohttp.ClientSession(headers=headers) as session:
             for entity in calendar_entities:
                 data = await self._fetch_rest_events(session, entity, start, end)
-                entity_events = parse_calendar_events(entity, data)
+                entity_events = parse_calendar_events(entity, data, self.timezone)
                 logger.info("calendar fetch returned calendar=%s event_count=%s", entity, len(entity_events))
                 events.extend(entity_events)
 
         logger.info("calendar fetch total event_count=%s", len(events))
-        return sorted(events, key=lambda event: event.start or datetime.max)
+        sort_fallback = datetime.max.replace(tzinfo=self.timezone)
+        return sorted(events, key=lambda event: event.start or sort_fallback)
 
     async def get_hourly_weather(self, weather_entity: str, limit: int = 24) -> list[WeatherForecast]:
         weather_entity = weather_entity.strip()
@@ -247,7 +250,7 @@ class HomeAssistantCalendarClient:
                 detail: dict[str, Any] = {"entity": entity}
                 try:
                     data = await self._fetch_rest_events(session, entity, start, end)
-                    events = parse_calendar_events(entity, data)
+                    events = parse_calendar_events(entity, data, self.timezone)
                     detail["event_count"] = len(events)
                     detail["sample_events"] = [event_to_debug_dict(event) for event in events[:5]]
                     detail["raw_type"] = type(data).__name__
@@ -283,7 +286,11 @@ class HomeAssistantCalendarClient:
         return data
 
 
-def parse_calendar_events(calendar: str, data: list[dict[str, Any]] | dict[str, Any]) -> list[CalendarEvent]:
+def parse_calendar_events(
+    calendar: str,
+    data: list[dict[str, Any]] | dict[str, Any],
+    timezone: ZoneInfo | None = None,
+) -> list[CalendarEvent]:
     if isinstance(data, dict):
         raw_events = extract_raw_events(data)
     else:
@@ -291,8 +298,8 @@ def parse_calendar_events(calendar: str, data: list[dict[str, Any]] | dict[str, 
 
     events: list[CalendarEvent] = []
     for item in raw_events:
-        start = parse_ha_datetime(item.get("start"))
-        end = parse_ha_datetime(item.get("end"))
+        start = parse_ha_datetime(item.get("start"), timezone)
+        end = parse_ha_datetime(item.get("end"), timezone)
         events.append(
             CalendarEvent(
                 calendar=calendar,
@@ -431,12 +438,20 @@ def weather_forecast_types(configured_type: str) -> list[str]:
     return ["hourly", "daily", "twice_daily"]
 
 
-def parse_ha_datetime(value: str | dict[str, str] | None) -> datetime | None:
+def parse_ha_datetime(value: str | dict[str, str] | None, timezone: ZoneInfo | None = None) -> datetime | None:
     if not value:
         return None
     if isinstance(value, dict):
         value = value.get("dateTime") or value.get("date")
-    return datetime.fromisoformat(value) if value else None
+    if not value:
+        return None
+
+    parsed = datetime.fromisoformat(value)
+    if not timezone:
+        return parsed
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone)
+    return parsed.astimezone(timezone)
 
 
 def is_all_day_value(value: str | dict[str, str] | None) -> bool:

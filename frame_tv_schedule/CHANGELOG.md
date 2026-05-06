@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.13
+
+- Normalize calendar event timestamps into the configured add-on timezone before sorting, fixing mixed timezone-aware and timezone-naive Home Assistant calendar responses.
+
 ## 0.2.12
 
 - Regenerate the schedule image before pushing to the TV when the cached image was generated before today.

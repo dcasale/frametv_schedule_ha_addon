@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .calendar_client import parse_calendar_events, parse_weather_forecasts, weather_forecast_types, websocket_url
 
@@ -53,6 +54,38 @@ class CalendarClientTest(unittest.TestCase):
 
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].summary, "Appointment")
+
+    def test_parse_calendar_events_normalizes_mixed_timezone_values(self) -> None:
+        zone = ZoneInfo("America/Los_Angeles")
+        events = parse_calendar_events(
+            "calendar.family",
+            [
+                {
+                    "summary": "Aware event",
+                    "start": "2026-05-06T14:00:00+00:00",
+                    "end": "2026-05-06T15:00:00+00:00",
+                },
+                {
+                    "summary": "Naive event",
+                    "start": "2026-05-06T08:30:00",
+                    "end": "2026-05-06T09:00:00",
+                },
+                {
+                    "summary": "All day",
+                    "start": {"date": "2026-05-06"},
+                    "end": {"date": "2026-05-07"},
+                },
+            ],
+            zone,
+        )
+
+        ordered = sorted(events, key=lambda event: event.start or datetime.max.replace(tzinfo=zone))
+
+        self.assertEqual(ordered[0].summary, "All day")
+        self.assertEqual(ordered[1].summary, "Aware event")
+        self.assertEqual(ordered[1].start, datetime(2026, 5, 6, 7, 0, tzinfo=zone))
+        self.assertEqual(ordered[2].summary, "Naive event")
+        self.assertEqual(ordered[2].start, datetime(2026, 5, 6, 8, 30, tzinfo=zone))
 
     def test_parse_weather_forecasts(self) -> None:
         forecasts = parse_weather_forecasts(
