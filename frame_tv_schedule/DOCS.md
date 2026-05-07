@@ -76,9 +76,9 @@ Use **Generate** to test calendar/image generation without touching the TV.
 
 Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window. This action regenerates the schedule image first.
 
-Use **Push Fallback Image** to show the configured fallback art. Configure either `fallback_art_id` or `fallback_image` first.
+Use **Push Artwork** to show the configured Artwork. Select Artwork from either the **TV Art** page or the **Add-on Art** page first.
 
-Use **Run Window Check** to test whether the add-on should show the schedule or fallback art based on the configured display windows.
+Use **Diagnostics** -> **Run Window Check** to test whether the add-on should show the schedule or Artwork based on the configured display windows.
 
 After each web UI action, the status banner near the top of the page shows whether the action succeeded or failed and when it ran.
 
@@ -116,18 +116,18 @@ Use the **Art Library** section in the web UI to upload images into the add-on. 
 After uploading art, use the dropdown or gallery cards to:
 
 - **Push Selected Art**: manually show that image on the TV.
-- **Use Selected Art as Fallback**: make that image the fallback used by **Push Fallback Image**.
-- **Delete**: remove that uploaded image from the add-on art library. If it was selected as fallback, the fallback selection is cleared.
+- **Use Selected Art as Artwork**: make that image the Artwork used by **Push Artwork** and by automatic window-end switching.
+- **Delete**: remove that uploaded image from the add-on art library. If it was selected as Artwork, the Artwork selection is cleared.
 
-This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image**.
+This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as Artwork, and verify **Push Selected Art** and **Push Artwork**.
 
 ## TV art
 
-The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, use it as the fallback art, or delete it from the TV. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
+The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, use it as the configured Artwork, or delete it from the TV. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
 This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. The add-on tries the newer thumbnail-list API first, then falls back to the legacy per-image thumbnail API. The Samsung library exposes thumbnails, not guaranteed full-resolution artwork downloads, so the UI scales those cached thumbnails for browsing. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
 
-The **Current TV** page is a read-only diagnostic page. Select **Refresh Current TV Image** to ask the Samsung Frame TV which art ID is currently selected. This does not change the automatic switching logic; the add-on still switches only between the generated schedule image and the configured fallback art.
+The **Current TV** page is a read-only diagnostic page. Select **Refresh Current TV Image** to ask the Samsung Frame TV which art ID is currently selected. This does not change the automatic switching logic; the add-on still switches only between the generated schedule image and the configured Artwork.
 
 ## Configuration fields
 
@@ -161,7 +161,7 @@ afternoon_window_end: "16:30"
 
 At the start of each window, the add-on generates a fresh schedule image and then pushes it to the TV. This keeps weather and calendar data current for that window.
 
-Outside these windows the add-on shows the configured fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end switch.
+Outside these windows the add-on shows the configured Artwork. Artwork selected from the **TV Art** page or the add-on **Art Library** page is used by both the manual **Push Artwork** button and the automatic window-end switch.
 
 ## Schedule image readability
 
@@ -234,8 +234,8 @@ After `dry_run` works:
 4. Save and restart the add-on.
 5. Open the add-on web UI and select **Push Calendar Image**.
 6. Watch the TV for a pairing prompt and approve it.
-7. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Fallback**.
-8. Select **Push Fallback Image** to verify fallback behavior.
+7. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Artwork**.
+8. Select **Push Artwork** to verify Artwork behavior.
 9. Temporarily set one display window to include the current time.
 10. Select **Run Window Check**.
 

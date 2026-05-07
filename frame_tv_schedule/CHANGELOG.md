@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.20
+
+- Tighten timed-event title and location spacing on the generated schedule image.
+- Increase all-day event title size.
+- Rename visible fallback-image language to Artwork.
+- Move Current TV to the first navigation tab and move Run Window Check to Diagnostics.
+- Remove unused fallback art ID and fallback image fields from add-on configuration.
+
 ## 0.2.19
 
 - Reduce the schedule title size to leave more room for daily content.

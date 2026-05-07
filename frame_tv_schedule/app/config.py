@@ -28,8 +28,6 @@ class AddonConfig(BaseModel):
     afternoon_window_start: str = "14:30"
     afternoon_window_end: str = "16:30"
     display_windows: list[DisplayWindow] = Field(default_factory=list)
-    fallback_art_id: str = ""
-    fallback_image: str = ""
     tv_host: str = ""
     tv_port: int = 8002
     tv_name: str = "Frame TV"

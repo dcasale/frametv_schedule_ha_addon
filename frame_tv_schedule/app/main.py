@@ -67,8 +67,8 @@ async def index() -> HTMLResponse:
 async def art_page() -> HTMLResponse:
     state = state_store.read()
     art_images = art_library.list_images()
-    art_options = render_art_options(art_images, str(state.get("fallback_art_file", "")))
-    art_grid = render_addon_art_grid(art_images, str(state.get("fallback_art_file", "")))
+    art_options = render_art_options(art_images, selected_artwork_file(state))
+    art_grid = render_addon_art_grid(art_images, selected_artwork_file(state))
     body = f"""
     <!doctype html>
     <html>
@@ -91,7 +91,7 @@ async def art_page() -> HTMLResponse:
           </form>
           <form method="post" action="./set-fallback-art">
             <select name="art_name" required>{art_options}</select>
-            <button>Use Selected Art as Fallback</button>
+            <button>Use Selected Art as Artwork</button>
           </form>
         </div>
         <div class="art-grid">{art_grid}</div>
@@ -104,8 +104,8 @@ async def art_page() -> HTMLResponse:
 @app.get("/tv-art")
 async def tv_art_page() -> HTMLResponse:
     state = state_store.read()
-    tv_art_options = render_tv_art_options(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
-    tv_art_grid = render_tv_art_grid(state.get("tv_art_items", []), str(state.get("fallback_tv_art_id", "")))
+    tv_art_options = render_tv_art_options(state.get("tv_art_items", []), selected_artwork_tv_id(state))
+    tv_art_grid = render_tv_art_grid(state.get("tv_art_items", []), selected_artwork_tv_id(state))
     body = f"""
     <!doctype html>
     <html>
@@ -117,7 +117,7 @@ async def tv_art_page() -> HTMLResponse:
         {nav("tv-art")}
         {render_status(state)}
         <h1>TV Art</h1>
-        <p>Refresh the list from the Samsung Frame TV, then select an existing TV art item to display or use as fallback.</p>
+        <p>Refresh the list from the Samsung Frame TV, then select an existing TV art item to display or use as Artwork.</p>
         <div class="action-panel">
           <form method="post" action="./refresh-tv-art"><button>Refresh TV Art List</button></form>
           <form method="post" action="./push-tv-art">
@@ -126,7 +126,7 @@ async def tv_art_page() -> HTMLResponse:
           </form>
           <form method="post" action="./set-fallback-tv-art">
             <select name="art_id" required>{tv_art_options}</select>
-            <button>Use Selected TV Art as Fallback</button>
+            <button>Use Selected TV Art as Artwork</button>
           </form>
         </div>
         <div class="art-grid">{tv_art_grid}</div>
@@ -178,6 +178,7 @@ async def diagnostics_page() -> HTMLResponse:
         {render_status(state)}
         <h1>Diagnostics</h1>
         <div class="subnav">
+          <form method="post" action="./tick"><button>Run Window Check</button></form>
           <form method="post" action="./calendar-debug"><button>Run Calendar Debug</button></form>
           <form method="post" action="./weather-debug"><button>Run Weather Debug</button></form>
         </div>
@@ -391,13 +392,13 @@ async def tick() -> dict[str, str]:
         await show_window_fallback_image()
         state_store.update(
             {
-                "last_action": "Window check showed fallback art after the schedule window.",
+                "last_action": "Window check showed Artwork after the schedule window.",
                 "schedule_active": False,
                 "schedule_push_mode": config.push_mode,
             }
         )
-        logger.info("window check showed fallback art")
-        return {"action": "show_fallback", "message": "Showed fallback art after the schedule window."}
+        logger.info("window check showed artwork")
+        return {"action": "show_artwork", "message": "Showed Artwork after the schedule window."}
 
     state_store.update({"last_action": "Window check completed. No display change was needed."})
     logger.info("window check completed with no display change")
@@ -428,29 +429,23 @@ async def show_window_fallback_image() -> None:
 
 async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, str]:
     state = state_store.read()
-    fallback_tv_art_id = str(state.get("fallback_tv_art_id", ""))
-    if fallback_tv_art_id:
-        logger.info("push fallback requested from TV art id=%s", fallback_tv_art_id)
-        await frame_client.select_art(fallback_tv_art_id)
-        return {"action": "push_fallback", "art_id": fallback_tv_art_id, "message": f"Pushed fallback TV art {fallback_tv_art_id}."}
+    artwork_tv_art_id = selected_artwork_tv_id(state)
+    if artwork_tv_art_id:
+        logger.info("push artwork requested from TV art id=%s", artwork_tv_art_id)
+        await frame_client.select_art(artwork_tv_art_id)
+        return {"action": "push_artwork", "art_id": artwork_tv_art_id, "message": f"Pushed Artwork TV art {artwork_tv_art_id}."}
 
-    fallback_art_file = str(state.get("fallback_art_file", ""))
-    if fallback_art_file:
-        path = art_library.get(fallback_art_file)
-        logger.info("push fallback requested from art library path=%s", path)
-        await frame_client.show_image(path, label=f"fallback_{path.stem}")
-        return {"action": "push_fallback", "image": path.name, "message": f"Pushed fallback art {path.name} to the Frame TV."}
+    artwork_art_file = selected_artwork_file(state)
+    if artwork_art_file:
+        path = art_library.get(artwork_art_file)
+        logger.info("push artwork requested from art library path=%s", path)
+        await frame_client.show_image(path, label=f"artwork_{path.stem}")
+        return {"action": "push_artwork", "image": path.name, "message": f"Pushed Artwork {path.name} to the Frame TV."}
 
-    logger.info(
-        "push fallback requested fallback_art_id=%s fallback_image=%s",
-        config.fallback_art_id or "(not set)",
-        config.fallback_image or "(not set)",
-    )
-    if allow_empty and not config.fallback_art_id and not config.fallback_image:
-        return {"action": "push_fallback", "message": "No fallback image is configured."}
-
-    await frame_client.show_fallback()
-    return {"action": "push_fallback", "message": "Pushed fallback image to the Frame TV."}
+    message = "No Artwork is configured."
+    if allow_empty:
+        return {"action": "push_artwork", "message": message}
+    raise RuntimeError(message)
 
 
 async def upload_art(art_file: UploadFile) -> dict[str, str]:
@@ -476,16 +471,25 @@ async def push_library_art(art_name: str) -> dict[str, str]:
 
 async def set_fallback_art(art_name: str) -> dict[str, str]:
     path = art_library.get(art_name)
-    state_store.update({"last_action": f"Set fallback art to {path.name}.", "fallback_art_file": path.name, "fallback_tv_art_id": ""})
-    logger.info("fallback art set to path=%s", path)
-    return {"action": "set_fallback_art", "image": path.name, "message": f"Set fallback art to {path.name}."}
+    state_store.update(
+        {
+            "last_action": f"Set Artwork to {path.name}.",
+            "artwork_art_file": path.name,
+            "artwork_tv_art_id": "",
+            "fallback_art_file": "",
+            "fallback_tv_art_id": "",
+        }
+    )
+    logger.info("artwork set to path=%s", path)
+    return {"action": "set_artwork", "image": path.name, "message": f"Set Artwork to {path.name}."}
 
 
 async def delete_library_art(art_name: str) -> dict[str, str]:
     path = art_library.delete(art_name)
     state = state_store.read()
     update: dict[str, Any] = {"last_action": f"Deleted add-on art {path.name}."}
-    if str(state.get("fallback_art_file", "")) == path.name:
+    if selected_artwork_file(state) == path.name:
+        update["artwork_art_file"] = ""
         update["fallback_art_file"] = ""
     state_store.update(update)
     logger.info("deleted art library image path=%s", path)
@@ -517,8 +521,16 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
 
 
 async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
-    state_store.update({"last_action": f"Set fallback TV art to {art_id}.", "fallback_tv_art_id": art_id, "fallback_art_file": ""})
-    return {"action": "set_fallback_tv_art", "art_id": art_id, "message": f"Set fallback TV art to {art_id}."}
+    state_store.update(
+        {
+            "last_action": f"Set Artwork to TV art {art_id}.",
+            "artwork_tv_art_id": art_id,
+            "artwork_art_file": "",
+            "fallback_tv_art_id": "",
+            "fallback_art_file": "",
+        }
+    )
+    return {"action": "set_artwork", "art_id": art_id, "message": f"Set Artwork to TV art {art_id}."}
 
 
 async def delete_tv_art(art_id: str) -> dict[str, str]:
@@ -526,7 +538,8 @@ async def delete_tv_art(art_id: str) -> dict[str, str]:
     state = state_store.read()
     items = remove_tv_art_item(state.get("tv_art_items", []), art_id)
     update: dict[str, Any] = {"last_action": f"Deleted TV art {art_id}.", "tv_art_items": items}
-    if str(state.get("fallback_tv_art_id", "")) == art_id:
+    if selected_artwork_tv_id(state) == art_id:
+        update["artwork_tv_art_id"] = ""
         update["fallback_tv_art_id"] = ""
     current = state.get("current_tv_art", {})
     if isinstance(current, dict) and str(current.get("art_id", "")) == art_id:
@@ -610,6 +623,14 @@ def wants_json(request: Request) -> bool:
     return "application/json" in accept and "text/html" not in accept
 
 
+def selected_artwork_file(state: dict[str, Any]) -> str:
+    return str(state.get("artwork_art_file", "") or state.get("fallback_art_file", ""))
+
+
+def selected_artwork_tv_id(state: dict[str, Any]) -> str:
+    return str(state.get("artwork_tv_art_id", "") or state.get("fallback_tv_art_id", ""))
+
+
 def render_art_options(paths: list[Path], selected_name: str = "") -> str:
     if not paths:
         return '<option value="">Upload art first</option>'
@@ -657,7 +678,7 @@ def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
               </form>
               <form method="post" action="./set-fallback-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button>Set Fallback</button>
+                <button>Set Artwork</button>
               </form>
               <form method="post" action="./delete-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
@@ -699,7 +720,7 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
               </form>
               <form method="post" action="./set-fallback-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button>Set Fallback</button>
+                <button>Set Artwork</button>
               </form>
               <form method="post" action="./delete-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
@@ -837,8 +858,7 @@ def schedule_page() -> HTMLResponse:
         <div class="subnav">
           <form method="post" action="./generate"><button>Generate</button></form>
           <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
-          <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
-          <form method="post" action="./tick"><button>Run Window Check</button></form>
+          <form method="post" action="./push-fallback"><button>Push Artwork</button></form>
         </div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
         {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ''}
@@ -886,10 +906,10 @@ def page_styles() -> str:
 
 def nav(active: str) -> str:
     links = [
+        ("current-tv", "./current-tv", "Current TV"),
         ("schedule", "./", "Schedule"),
         ("art", "./art", "Add-on Art"),
         ("tv-art", "./tv-art", "TV Art"),
-        ("current-tv", "./current-tv", "Current TV"),
         ("diagnostics", "./diagnostics", "Diagnostics"),
     ]
     return "<nav>" + "".join(

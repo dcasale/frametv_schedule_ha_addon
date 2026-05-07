@@ -102,10 +102,16 @@ class ScheduleRenderer:
                     text_width_available = timed_right - text_x - s(42)
                     location_lines = 1 if event.location and not self.config.privacy_mode and row_height >= s(136) else 0
                     title_lines = 1 if location_lines else max(1, min(2, int((row_height - s(42)) / (font_size(row_fonts["event"]) + s(6)))))
+                    title_y = timed_cursor + s(16)
+                    location_y = timed_cursor + row_height - font_size(row_fonts["detail"]) - s(16)
+                    if location_lines:
+                        block_height = font_size(row_fonts["event"]) + s(12) + font_size(row_fonts["detail"])
+                        title_y = timed_cursor + max(s(12), (row_height - block_height) // 2)
+                        location_y = title_y + font_size(row_fonts["event"]) + s(12)
                     draw_wrapped_text(
                         draw,
                         summary(event, self.config.privacy_mode),
-                        (text_x, timed_cursor + s(22)),
+                        (text_x, title_y),
                         row_fonts["event"],
                         "#172424",
                         text_width_available,
@@ -116,7 +122,7 @@ class ScheduleRenderer:
                         draw_wrapped_text(
                             draw,
                             event.location,
-                            (text_x, timed_cursor + row_height - font_size(row_fonts["detail"]) - s(22)),
+                            (text_x, location_y),
                             row_fonts["detail"],
                             "#51605f",
                             text_width_available,
@@ -137,7 +143,7 @@ class ScheduleRenderer:
                 draw,
                 all_day,
                 (all_day_left, content_top + s(70), all_day_right, content_bottom),
-                load_font(s(48), bold=True),
+                load_font(s(56), bold=True),
                 small_font,
                 self.config.privacy_mode,
                 scale,
