@@ -164,6 +164,8 @@ The schedule image is designed for dim Frame TV Art Mode viewing. It shows a sma
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
+Emoji in calendar titles are removed from the rendered image. The add-on uses Pillow and system fonts inside Home Assistant, and common color emoji render as missing-glyph boxes there instead of clean icons.
+
 ## Weather
 
 Set `weather_entity` to a Home Assistant weather entity, such as `weather.forecast_home`, to add a weather strip to the bottom of the schedule image. Use the entity ID from **Settings** -> **Devices & services** -> **Entities**; the friendly name is not enough.

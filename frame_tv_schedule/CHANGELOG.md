@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.16
+
+- Render the schedule image full-bleed without the inset panel border.
+- Reserve weather strip space before laying out calendar rows so events cannot overlap weather.
+- Strip emoji from calendar text because Pillow renders common color emoji as missing-glyph boxes in the add-on image.
+
 ## 0.2.15
 
 - Remove previous-art tracking and restore controls.

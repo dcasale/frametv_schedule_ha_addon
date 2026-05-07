@@ -20,12 +20,12 @@ class ScheduleRenderer:
     def render(self, events: list[CalendarEvent], now: datetime | None = None, weather: list[WeatherForecast] | None = None) -> Path:
         now = now or datetime.now(self.timezone)
         weather = weather or []
-        image = Image.new("RGB", (self.config.image_width, self.config.image_height), "#fbf7ec")
+        image = Image.new("RGB", (self.config.image_width, self.config.image_height), "#fffdf6")
         draw = ImageDraw.Draw(image)
 
         width, height = image.size
-        margin = int(width * 0.06)
-        top = int(height * 0.075)
+        margin = int(width * 0.045)
+        top = int(height * 0.055)
         title_font = load_font(168, bold=True)
         date_font = load_font(76, bold=True)
         section_font = load_font(54, bold=True)
@@ -37,8 +37,7 @@ class ScheduleRenderer:
         weather_temp_font = load_font(62, bold=True)
         weather_detail_font = load_font(38)
 
-        draw.rectangle((0, 0, width, height), fill="#fbf7ec")
-        draw.rounded_rectangle((margin - 48, top - 44, width - margin + 48, height - top + 42), radius=44, fill="#fffdf6")
+        draw.rectangle((0, 0, width, height), fill="#fffdf6")
 
         title = "Today's Schedule"
         date_label = now.strftime("%A, %B %-d")
@@ -67,22 +66,30 @@ class ScheduleRenderer:
         draw.text((margin, cursor), "Today", fill="#9a5b1e", font=section_font)
         cursor += 82
 
-        weather_band_height = min(310, max(190, int(height * 0.145)))
-        weather_top = height - weather_band_height - 92 if weather else height - 150
-        content_bottom = weather_top - 36
+        display_weather = visible_weather_forecasts(weather, now, self.timezone)
+        weather_band_height = min(330, max(210, int(height * 0.155)))
+        weather_bottom = height - int(height * 0.04)
+        weather_top = weather_bottom - weather_band_height if display_weather else height - int(height * 0.07)
+        content_bottom = weather_top - 42
 
         if not timed:
             draw.text((margin, cursor), "No timed events today", fill="#172424", font=event_font)
         else:
             max_events = 6
             row_gap = 22
-            visible_events = min(len(timed), max_events)
-            row_height = max(int(height * 0.105), int((content_bottom - cursor - row_gap * (visible_events - 1)) / max(visible_events, 1)))
-            for event in timed[:max_events]:
+            min_row_height = 210 if any(event.location and not self.config.privacy_mode for event in timed[:max_events]) else 160
+            available_event_height = max(0, content_bottom - cursor)
+            max_fit_events = max(1, int((available_event_height + row_gap) / (min_row_height + row_gap)))
+            visible_events = min(len(timed), max_events, max_fit_events)
+            row_height = int((available_event_height - row_gap * (visible_events - 1)) / max(visible_events, 1))
+            row_height = max(min_row_height, row_height)
+            rendered_events = 0
+            for event in timed[:visible_events]:
                 time_label = event_time_label(event)
                 row_bottom = min(cursor + row_height, content_bottom)
-                if row_bottom <= cursor:
+                if row_bottom <= cursor + 96:
                     break
+                rendered_events += 1
                 draw.rounded_rectangle((margin, cursor, width - margin, row_bottom), radius=24, fill="#f1eadc")
                 row_mid = cursor + ((row_bottom - cursor) // 2)
                 time_y = row_mid - (font_size(time_font) // 2)
@@ -111,23 +118,24 @@ class ScheduleRenderer:
                     )
                 cursor += row_height + row_gap
 
-            if len(timed) > max_events:
-                draw.text((margin, content_bottom + 20), f"+ {len(timed) - max_events} more events today", fill="#3f4d4c", font=small_font)
-
-        display_weather = visible_weather_forecasts(weather, now, self.timezone)
+            if len(timed) > rendered_events:
+                more_label = f"+ {len(timed) - rendered_events} more events today"
+                more_y = max(cursor, content_bottom - font_size(small_font) - 8)
+                if more_y + font_size(small_font) < weather_top - 8:
+                    draw.text((margin, more_y), more_label, fill="#3f4d4c", font=small_font)
 
         if display_weather:
             draw_weather_band(
                 draw,
                 display_weather,
-                (margin, weather_top, width - margin, height - 92),
+                (margin, weather_top, width - margin, weather_bottom),
                 weather_time_font,
                 weather_temp_font,
                 weather_detail_font,
             )
         else:
             footer = "Home Assistant"
-            draw.text((width - margin - text_width(draw, footer, small_font), height - 92), footer, fill="#6f7a78", font=small_font)
+            draw.text((width - margin - text_width(draw, footer, small_font), height - int(height * 0.04)), footer, fill="#6f7a78", font=small_font)
         self.output_path.write_bytes(b"")
         image.save(self.output_path, "PNG")
         return self.output_path
@@ -158,6 +166,7 @@ def draw_wrapped_text(
     line_gap: int = 0,
 ) -> None:
     x, y = xy
+    text = strip_emoji(text)
     words = text.split()
     lines: list[str] = []
     current = ""
@@ -247,6 +256,20 @@ def weather_rain_label(forecast: WeatherForecast) -> str:
     return "-- rain"
 
 
+def strip_emoji(text: str) -> str:
+    return "".join(character for character in text if not is_emoji_character(character)).replace("  ", " ").strip()
+
+
+def is_emoji_character(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        0x1F000 <= codepoint <= 0x1FAFF
+        or 0x2600 <= codepoint <= 0x27BF
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or codepoint == 0x200D
+    )
+
+
 def draw_weather_icon(draw: ImageDraw.ImageDraw, center: tuple[int, int], size: int, condition: str) -> None:
     x, y = center
     condition = condition.lower()
@@ -291,6 +314,9 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
         "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/TTF/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Apple Color Emoji.ttc",
+        "/usr/share/fonts/noto/NotoColorEmoji.ttf",
+        "/usr/share/fonts/noto/NotoEmoji-Regular.ttf",
     ):
         try:
             return ImageFont.truetype(path, size=size)
