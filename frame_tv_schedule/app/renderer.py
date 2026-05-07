@@ -143,7 +143,7 @@ class ScheduleRenderer:
                 draw,
                 all_day,
                 (all_day_left, content_top + s(70), all_day_right, content_bottom),
-                load_font(s(56), bold=True),
+                load_event_font(s(62), bold=True),
                 small_font,
                 self.config.privacy_mode,
                 scale,
@@ -163,6 +163,7 @@ class ScheduleRenderer:
             draw.text((width - margin - text_width(draw, footer, small_font), height - int(height * 0.04)), footer, fill="#6f7a78", font=small_font)
         self.output_path.write_bytes(b"")
         image.save(self.output_path, "PNG")
+        purge_prior_schedule_images(self.output_path)
         return self.output_path
 
 
@@ -201,10 +202,10 @@ def minimum_row_height(event_count: int, scale: float = 1.0) -> int:
 
 def row_font_set(row_height: int, scale: float = 1.0) -> dict[str, ImageFont.FreeTypeFont | ImageFont.ImageFont]:
     if row_height >= scaled(180, scale):
-        return {"time": load_font(scaled(58, scale), bold=True), "event": load_font(scaled(68, scale), bold=True), "detail": load_font(scaled(42, scale))}
+        return {"time": load_font(scaled(58, scale), bold=True), "event": load_event_font(scaled(68, scale), bold=True), "detail": load_font(scaled(42, scale))}
     if row_height >= scaled(120, scale):
-        return {"time": load_font(scaled(50, scale), bold=True), "event": load_font(scaled(58, scale), bold=True), "detail": load_font(scaled(36, scale))}
-    return {"time": load_font(scaled(36, scale), bold=True), "event": load_font(scaled(40, scale), bold=True), "detail": load_font(scaled(26, scale))}
+        return {"time": load_font(scaled(50, scale), bold=True), "event": load_event_font(scaled(58, scale), bold=True), "detail": load_font(scaled(36, scale))}
+    return {"time": load_font(scaled(36, scale), bold=True), "event": load_event_font(scaled(40, scale), bold=True), "detail": load_font(scaled(26, scale))}
 
 
 def draw_all_day_box(
@@ -286,11 +287,10 @@ def draw_weather_band(
     scale = max(0.25, font_size(time_font) / 44)
     s = lambda value: scaled(value, scale)
     draw.rounded_rectangle(box, radius=s(28), fill="#233232")
-    draw.text((left + s(36), top + s(26)), "Hourly Weather", fill="#f7f1e3", font=time_font)
     if not forecasts:
         return
 
-    grid_top = top + s(84)
+    grid_top = top + s(34)
     max_columns = max(1, int((right - left - s(72)) / s(360)))
     forecasts = forecasts[:max_columns]
     column_width = (right - left - s(72)) / len(forecasts)
@@ -303,14 +303,14 @@ def draw_weather_band(
             draw.line((x, grid_top + s(8), x, bottom - s(22)), fill="#5b6967", width=max(1, s(2)))
         time_label = forecast.datetime.strftime("%-I %p") if forecast.datetime else "--"
         draw.text((center_x - text_width(draw, time_label, time_font) // 2, grid_top), time_label, fill="#dfe8e2", font=time_font)
-        icon_y = grid_top + s(58 if compact else 76)
+        icon_y = grid_top + s(76 if compact else 88)
         icon_size = s(28 if compact else 36)
         draw_weather_icon(draw, (center_x, icon_y), icon_size, forecast.condition)
         temp_label = f"{round(forecast.temperature)}°" if forecast.temperature is not None else "--"
-        temp_y = grid_top + s(92 if compact else 118)
+        temp_y = grid_top + s(116 if compact else 132)
         draw.text((center_x - text_width(draw, temp_label, temp_font) // 2, temp_y), temp_label, fill="#fffdf6", font=temp_font)
         rain_label = weather_rain_label(forecast)
-        rain_y = grid_top + s(150 if compact else 184)
+        rain_y = grid_top + s(176 if compact else 196)
         draw.text((center_x - text_width(draw, rain_label, detail_font) // 2, rain_y), rain_label, fill="#b9d8e7", font=detail_font)
 
 
@@ -400,6 +400,20 @@ def font_size(font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> int:
     return int(getattr(font, "size", 48))
 
 
+def load_event_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in (
+        "/usr/share/fonts/ttf-dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/ttf-dejavu/DejaVuSerif.ttf",
+        "/usr/share/fonts/TTF/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/TTF/DejaVuSerif.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSerif.ttf",
+        "/System/Library/Fonts/Supplemental/Georgia Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Georgia.ttf",
+    ):
+        try:
+            return ImageFont.truetype(path, size=size)
+        except OSError:
+            continue
+    return load_font(size, bold=bold)
+
+
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     for path in (
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
@@ -415,3 +429,14 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+def purge_prior_schedule_images(output_path: Path) -> None:
+    keep = output_path.resolve()
+    for candidate in output_path.parent.glob("schedule*.png"):
+        try:
+            if candidate.resolve() == keep:
+                continue
+        except FileNotFoundError:
+            continue
+        candidate.unlink(missing_ok=True)

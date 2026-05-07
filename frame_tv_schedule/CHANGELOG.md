@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.21
+
+- Remove the weather strip title and reposition weather times/icons to avoid overlap.
+- Use a serif event-title font for a warmer schedule image.
+- Increase all-day event title size again.
+- Purge older `schedule*.png` calendar images after a successful schedule render.
+
 ## 0.2.20
 
 - Tighten timed-event title and location spacing on the generated schedule image.

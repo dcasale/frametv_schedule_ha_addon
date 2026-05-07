@@ -165,7 +165,7 @@ Outside these windows the add-on shows the configured Artwork. Artwork selected 
 
 ## Schedule image readability
 
-The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. All-day events are grouped in a right-side section because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
+The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. Event titles use a serif font when available for a warmer art-display look. All-day events are grouped in a right-side section because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
@@ -252,4 +252,4 @@ The add-on logs should show entries for `push_mode`, `tv_host`, whether a window
 
 ## Generated files
 
-The rendered schedule image and runtime state are stored under `/config` inside the add-on container. Home Assistant maps this to the add-on's backed-up config directory.
+The rendered schedule image and runtime state are stored under `/config` inside the add-on container. Home Assistant maps this to the add-on's backed-up config directory. After a schedule image is generated successfully, the add-on removes older `schedule*.png` files from that same directory and keeps the current schedule image.

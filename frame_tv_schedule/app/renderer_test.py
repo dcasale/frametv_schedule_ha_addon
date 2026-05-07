@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from .calendar_client import CalendarEvent, WeatherForecast
 from .config import AddonConfig
-from .renderer import ScheduleRenderer, strip_emoji, visible_event_count, visible_weather_forecasts, weather_rain_label
+from .renderer import ScheduleRenderer, purge_prior_schedule_images, strip_emoji, visible_event_count, visible_weather_forecasts, weather_rain_label
 
 
 class RendererTest(unittest.TestCase):
@@ -64,6 +64,22 @@ class RendererTest(unittest.TestCase):
     def test_event_count_scales_to_fit_more_rows(self) -> None:
         self.assertEqual(visible_event_count(12, 1420, 14), 12)
         self.assertEqual(visible_event_count(12, 900, 14), 9)
+
+    def test_render_purges_prior_schedule_images(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            keep = directory / "schedule-today.png"
+            old = directory / "schedule-2026-05-06.png"
+            unrelated = directory / "art.png"
+            keep.write_bytes(b"new")
+            old.write_bytes(b"old")
+            unrelated.write_bytes(b"art")
+
+            purge_prior_schedule_images(keep)
+
+            self.assertTrue(keep.exists())
+            self.assertFalse(old.exists())
+            self.assertTrue(unrelated.exists())
 
 
 if __name__ == "__main__":
