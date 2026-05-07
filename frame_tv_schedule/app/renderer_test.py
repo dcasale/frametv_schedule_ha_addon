@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from .calendar_client import CalendarEvent, WeatherForecast
 from .config import AddonConfig
-from .renderer import ScheduleRenderer, strip_emoji, visible_weather_forecasts, weather_rain_label
+from .renderer import ScheduleRenderer, strip_emoji, visible_event_count, visible_weather_forecasts, weather_rain_label
 
 
 class RendererTest(unittest.TestCase):
@@ -60,6 +60,10 @@ class RendererTest(unittest.TestCase):
 
     def test_strip_emoji_removes_unsupported_calendar_symbols(self) -> None:
         self.assertEqual(strip_emoji("Birthday 🎂 bus 🚌"), "Birthday bus")
+
+    def test_event_count_scales_to_fit_more_rows(self) -> None:
+        self.assertEqual(visible_event_count(12, 1420, 14), 12)
+        self.assertEqual(visible_event_count(12, 900, 14), 9)
 
 
 if __name__ == "__main__":

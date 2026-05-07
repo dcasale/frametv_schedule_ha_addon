@@ -161,11 +161,19 @@ class FrameClient:
             art = tv.art()
             ensure_art_supported(art)
             for art_id in art_ids:
-                try:
-                    payload = art.get_thumbnail(art_id)
-                except Exception:
-                    logger.exception("failed to fetch Samsung Frame thumbnail art_id=%s", art_id)
-                    continue
+                payload: Any = None
+                thumbnail_list = getattr(art, "get_thumbnail_list", None)
+                if callable(thumbnail_list):
+                    try:
+                        payload = thumbnail_list(art_id)
+                    except Exception:
+                        logger.exception("failed to fetch Samsung Frame thumbnail list art_id=%s", art_id)
+                if not payload:
+                    try:
+                        payload = art.get_thumbnail(art_id, as_dict=True)
+                    except Exception:
+                        logger.exception("failed to fetch Samsung Frame thumbnail art_id=%s", art_id)
+                        continue
                 data = thumbnail_bytes(payload, art_id)
                 if data:
                     thumbnails[art_id] = data

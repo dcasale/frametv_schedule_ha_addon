@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.18
+
+- Move all-day events into a right-side box so timed events have more vertical space.
+- Dynamically scale timed event rows and fonts to fit more events on the schedule image.
+- Fetch TV art thumbnails through the newer Samsung thumbnail-list API first and fall back to the legacy thumbnail API.
+
 ## 0.2.17
 
 - Add a Current TV page that reads and displays the current Samsung Frame art ID reported by the TV.

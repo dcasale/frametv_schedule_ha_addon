@@ -29,6 +29,7 @@ class FrameClientHelpersTest(unittest.TestCase):
     def test_thumbnail_bytes_extracts_common_payloads(self) -> None:
         self.assertEqual(thumbnail_bytes(bytearray(b"abc")), b"abc")
         self.assertEqual(thumbnail_bytes({"MY-F0001": bytearray(b"def")}, "MY-F0001"), b"def")
+        self.assertEqual(thumbnail_bytes({"thumbnail.jpg": bytearray(b"ghi")}, "MY-F0002"), b"ghi")
 
     def test_file_sha256_is_stable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -124,7 +124,7 @@ This is the recommended safety path before relying on automatic window switching
 
 The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
-This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
+This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. The add-on tries the newer thumbnail-list API first, then falls back to the legacy per-image thumbnail API. The Samsung library exposes thumbnails, not guaranteed full-resolution artwork downloads, so the UI scales those cached thumbnails for browsing. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
 
 The **Current TV** page is a read-only diagnostic page. Select **Refresh Current TV Image** to ask the Samsung Frame TV which art ID is currently selected. This does not change the automatic switching logic; the add-on still switches only between the generated schedule image and the configured fallback art.
 
@@ -164,7 +164,7 @@ Outside these windows the add-on shows the configured fallback art. Fallbacks se
 
 ## Schedule image readability
 
-The schedule image is designed for dim Frame TV Art Mode viewing. It shows a small number of large, high-contrast rows instead of trying to fit every event on the screen. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
+The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. All-day events are grouped in a right-side box because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
