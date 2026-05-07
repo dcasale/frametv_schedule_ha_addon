@@ -89,6 +89,18 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
+    async def delete_art(self, art_id: str) -> None:
+        if self.config.push_mode == "dry_run":
+            logger.info("dry run: would delete TV art id=%s", art_id)
+            return
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("deleting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
+            await asyncio.to_thread(self._delete_art_sync, art_id)
+            return
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
     async def fetch_art_thumbnails(self, art_ids: list[str]) -> dict[str, bytes]:
         if self.config.push_mode == "dry_run":
             logger.info("dry run: would fetch %s TV art thumbnail(s)", len(art_ids))
@@ -151,6 +163,17 @@ class FrameClient:
             art.select_image(art_id, show=True)
             art.set_artmode(True)
         logger.info("selected Samsung Frame art id=%s", art_id)
+
+    def _delete_art_sync(self, art_id: str) -> None:
+        if not art_id:
+            raise RuntimeError("art_id is required")
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            deleted = art.delete(art_id)
+        if deleted is False:
+            raise RuntimeError(f"Samsung Frame did not confirm deletion for art id={art_id}")
+        logger.info("deleted Samsung Frame art id=%s", art_id)
 
     def _fetch_art_thumbnails_sync(self, art_ids: list[str]) -> dict[str, bytes]:
         thumbnails: dict[str, bytes] = {}

@@ -24,6 +24,11 @@ class ArtLibrary:
             raise FileNotFoundError(f"Art image not found: {name}")
         return path
 
+    def delete(self, name: str) -> Path:
+        path = self.get(name)
+        path.unlink()
+        return path
+
     async def save_upload(self, upload: UploadFile) -> Path:
         if not upload.filename:
             raise ValueError("Uploaded file needs a filename")

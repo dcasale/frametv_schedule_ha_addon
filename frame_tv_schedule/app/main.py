@@ -66,7 +66,9 @@ async def index() -> HTMLResponse:
 @app.get("/art")
 async def art_page() -> HTMLResponse:
     state = state_store.read()
-    art_options = render_art_options(art_library.list_images(), str(state.get("fallback_art_file", "")))
+    art_images = art_library.list_images()
+    art_options = render_art_options(art_images, str(state.get("fallback_art_file", "")))
+    art_grid = render_addon_art_grid(art_images, str(state.get("fallback_art_file", "")))
     body = f"""
     <!doctype html>
     <html>
@@ -92,6 +94,7 @@ async def art_page() -> HTMLResponse:
             <button>Use Selected Art as Fallback</button>
           </form>
         </div>
+        <div class="art-grid">{art_grid}</div>
       </body>
     </html>
     """
@@ -212,6 +215,12 @@ async def tv_art_thumbnail(filename: str) -> FileResponse:
     return FileResponse(path, media_type=media_type_for_thumbnail(path))
 
 
+@app.get("/addon-art-image/{filename}")
+async def addon_art_image(filename: str) -> FileResponse:
+    path = art_library.get(filename)
+    return FileResponse(path, media_type="image/png")
+
+
 @app.post("/generate", response_model=None)
 async def generate_route(request: Request) -> Response:
     result = await run_ui_action(generate_schedule_action)
@@ -268,6 +277,14 @@ async def set_fallback_art_route(request: Request, art_name: str = Form(...)) ->
     return RedirectResponse("./art", status_code=303)
 
 
+@app.post("/delete-art", response_model=None)
+async def delete_art_route(request: Request, art_name: str = Form(...)) -> Response:
+    result = await run_ui_action(lambda: delete_library_art(art_name))
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./art", status_code=303)
+
+
 @app.post("/refresh-tv-art", response_model=None)
 async def refresh_tv_art_route(request: Request) -> Response:
     result = await run_ui_action(refresh_tv_art)
@@ -287,6 +304,14 @@ async def push_tv_art_route(request: Request, art_id: str = Form(...)) -> Respon
 @app.post("/set-fallback-tv-art", response_model=None)
 async def set_fallback_tv_art_route(request: Request, art_id: str = Form(...)) -> Response:
     result = await run_ui_action(lambda: set_fallback_tv_art(art_id))
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./tv-art", status_code=303)
+
+
+@app.post("/delete-tv-art", response_model=None)
+async def delete_tv_art_route(request: Request, art_id: str = Form(...)) -> Response:
+    result = await run_ui_action(lambda: delete_tv_art(art_id))
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./tv-art", status_code=303)
@@ -456,6 +481,17 @@ async def set_fallback_art(art_name: str) -> dict[str, str]:
     return {"action": "set_fallback_art", "image": path.name, "message": f"Set fallback art to {path.name}."}
 
 
+async def delete_library_art(art_name: str) -> dict[str, str]:
+    path = art_library.delete(art_name)
+    state = state_store.read()
+    update: dict[str, Any] = {"last_action": f"Deleted add-on art {path.name}."}
+    if str(state.get("fallback_art_file", "")) == path.name:
+        update["fallback_art_file"] = ""
+    state_store.update(update)
+    logger.info("deleted art library image path=%s", path)
+    return {"action": "delete_art", "image": path.name, "message": f"Deleted add-on art {path.name}."}
+
+
 async def refresh_tv_art() -> dict[str, str]:
     items = await frame_client.list_available_art()
     cached_items = await cache_tv_art_thumbnails(items)
@@ -483,6 +519,21 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
 async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
     state_store.update({"last_action": f"Set fallback TV art to {art_id}.", "fallback_tv_art_id": art_id, "fallback_art_file": ""})
     return {"action": "set_fallback_tv_art", "art_id": art_id, "message": f"Set fallback TV art to {art_id}."}
+
+
+async def delete_tv_art(art_id: str) -> dict[str, str]:
+    await frame_client.delete_art(art_id)
+    state = state_store.read()
+    items = remove_tv_art_item(state.get("tv_art_items", []), art_id)
+    update: dict[str, Any] = {"last_action": f"Deleted TV art {art_id}.", "tv_art_items": items}
+    if str(state.get("fallback_tv_art_id", "")) == art_id:
+        update["fallback_tv_art_id"] = ""
+    current = state.get("current_tv_art", {})
+    if isinstance(current, dict) and str(current.get("art_id", "")) == art_id:
+        update["current_tv_art"] = {}
+    delete_existing_thumbnail(art_id)
+    state_store.update(update)
+    return {"action": "delete_tv_art", "art_id": art_id, "message": f"Deleted TV art {art_id}."}
 
 
 async def refresh_current_tv() -> dict[str, str]:
@@ -587,6 +638,37 @@ def render_tv_art_options(items: Any, selected_art_id: str = "") -> str:
     return "\n".join(options) or '<option value="">Refresh TV art first</option>'
 
 
+def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
+    if not paths:
+        return '<p>No add-on art uploaded yet.</p>'
+    cards = []
+    for path in paths:
+        selected = " selected" if path.name == selected_name else ""
+        title = path.stem.replace("-", " ")
+        cards.append(
+            f"""
+            <article class="art-card{selected}">
+              <img src="./addon-art-image/{escape(path.name)}" alt="{escape(title)}">
+              <div class="art-title">{escape(title)}</div>
+              <div class="art-id">{escape(path.name)}</div>
+              <form method="post" action="./push-art">
+                <input type="hidden" name="art_name" value="{escape(path.name)}">
+                <button>Show</button>
+              </form>
+              <form method="post" action="./set-fallback-art">
+                <input type="hidden" name="art_name" value="{escape(path.name)}">
+                <button>Set Fallback</button>
+              </form>
+              <form method="post" action="./delete-art">
+                <input type="hidden" name="art_name" value="{escape(path.name)}">
+                <button class="danger">Delete</button>
+              </form>
+            </article>
+            """
+        )
+    return "\n".join(cards)
+
+
 def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
     if not isinstance(items, list) or not items:
         return '<p>No TV art loaded yet.</p>'
@@ -618,6 +700,10 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
               <form method="post" action="./set-fallback-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
                 <button>Set Fallback</button>
+              </form>
+              <form method="post" action="./delete-tv-art">
+                <input type="hidden" name="art_id" value="{escape(art_id)}">
+                <button class="danger">Delete</button>
               </form>
             </article>
             """
@@ -662,6 +748,19 @@ def current_tv_thumbnail(art_id: str, tv_art_items: Any) -> str:
     return ""
 
 
+def remove_tv_art_item(items: Any, art_id: str) -> list[dict[str, str]]:
+    if not isinstance(items, list):
+        return []
+    remaining: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("art_id", "")) == art_id:
+            continue
+        remaining.append({str(key): str(value) for key, value in item.items()})
+    return remaining
+
+
 async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
     art_items = [item.__dict__ for item in items]
     missing_ids = [item["art_id"] for item in art_items if not existing_thumbnail_name(item["art_id"])]
@@ -688,6 +787,12 @@ def existing_thumbnail_name(art_id: str) -> str:
         if path.exists():
             return path.name
     return ""
+
+
+def delete_existing_thumbnail(art_id: str) -> None:
+    thumbnail = existing_thumbnail_name(art_id)
+    if thumbnail:
+        (thumbnail_cache_path / thumbnail).unlink(missing_ok=True)
 
 
 def safe_thumbnail_stem(art_id: str) -> str:
@@ -766,6 +871,8 @@ def page_styles() -> str:
           dd { margin: 0; overflow-wrap: anywhere; }
           button { padding: 0.65rem 1rem; border: 1px solid #1f2a2a; background: #fffdf6; color: #1f2a2a; cursor: pointer; }
           button:hover { background: #1f2a2a; color: #fffdf6; }
+          button.danger { border-color: #8f3d30; color: #8f3d30; }
+          button.danger:hover { background: #8f3d30; color: #fffdf6; }
           input, select { padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; max-width: 100%; }
           form { margin: 0; }
           .status { background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }

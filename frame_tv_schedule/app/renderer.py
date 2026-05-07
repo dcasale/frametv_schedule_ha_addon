@@ -28,7 +28,7 @@ class ScheduleRenderer:
         s = lambda value: scaled(value, scale)
         margin = int(width * 0.045)
         top = int(height * 0.055)
-        title_font = load_font(s(152), bold=True)
+        title_font = load_font(s(128), bold=True)
         date_font = load_font(s(68), bold=True)
         section_font = load_font(s(46), bold=True)
         event_font = load_font(s(64), bold=True)
@@ -132,11 +132,11 @@ class ScheduleRenderer:
                     draw.text((timed_left, more_y), more_label, fill="#3f4d4c", font=small_font)
 
         if all_day:
+            draw.text((all_day_left, content_top), "All Day", fill="#9a5b1e", font=section_font)
             draw_all_day_box(
                 draw,
                 all_day,
-                (all_day_left, content_top, all_day_right, content_bottom),
-                section_font,
+                (all_day_left, content_top + s(70), all_day_right, content_bottom),
                 load_font(s(48), bold=True),
                 small_font,
                 self.config.privacy_mode,
@@ -205,7 +205,6 @@ def draw_all_day_box(
     draw: ImageDraw.ImageDraw,
     events: list[CalendarEvent],
     box: tuple[int, int, int, int],
-    section_font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
     event_font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
     small_font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
     privacy_mode: bool,
@@ -213,9 +212,8 @@ def draw_all_day_box(
 ) -> None:
     s = lambda value: scaled(value, scale)
     left, top, right, bottom = box
-    draw.rounded_rectangle(box, radius=s(24), fill="#ede3d2")
-    draw.text((left + s(30), top + s(28)), "All Day", fill="#9a5b1e", font=section_font)
-    cursor = top + s(98)
+    draw.rounded_rectangle(box, radius=s(20), fill="#f1eadc")
+    cursor = top + s(28)
     line_height = font_size(event_font) + s(20)
     available_lines = max(1, int((bottom - cursor - s(34)) / line_height))
     visible_events = events[:available_lines]

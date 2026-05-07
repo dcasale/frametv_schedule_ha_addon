@@ -113,16 +113,17 @@ When a manual token is configured, the add-on uses that token instead of `SUPERV
 
 Use the **Art Library** section in the web UI to upload images into the add-on. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size.
 
-After uploading art, use the dropdown to:
+After uploading art, use the dropdown or gallery cards to:
 
 - **Push Selected Art**: manually show that image on the TV.
 - **Use Selected Art as Fallback**: make that image the fallback used by **Push Fallback Image**.
+- **Delete**: remove that uploaded image from the add-on art library. If it was selected as fallback, the fallback selection is cleared.
 
 This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image**.
 
 ## TV art
 
-The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
+The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, use it as the fallback art, or delete it from the TV. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
 This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. The add-on tries the newer thumbnail-list API first, then falls back to the legacy per-image thumbnail API. The Samsung library exposes thumbnails, not guaranteed full-resolution artwork downloads, so the UI scales those cached thumbnails for browsing. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
 
@@ -164,7 +165,7 @@ Outside these windows the add-on shows the configured fallback art. Fallbacks se
 
 ## Schedule image readability
 
-The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. All-day events are grouped in a right-side box because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
+The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. All-day events are grouped in a right-side section because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 

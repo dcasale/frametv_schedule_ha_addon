@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.19
+
+- Reduce the schedule title size to leave more room for daily content.
+- Align the All Day heading and box styling with the Today timed-event section.
+- Add gallery delete buttons for uploaded add-on art and Samsung Frame TV art.
+- Show uploaded add-on art in the same gallery card style as TV Art.
+
 ## 0.2.18
 
 - Move all-day events into a right-side box so timed events have more vertical space.

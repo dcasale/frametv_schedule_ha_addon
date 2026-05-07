@@ -31,6 +31,18 @@ class ArtLibraryTest(unittest.TestCase):
 
             self.assertEqual([path.name for path in library.list_images()], ["a.png", "b.png"])
 
+    def test_delete_removes_image(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            path = directory / "art.png"
+            path.write_text("")
+
+            library = ArtLibrary(directory)
+            deleted = library.delete("art.png")
+
+            self.assertEqual(deleted, path)
+            self.assertFalse(path.exists())
+
     def test_normalizes_image_to_target_size(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             directory = Path(tmpdir)
