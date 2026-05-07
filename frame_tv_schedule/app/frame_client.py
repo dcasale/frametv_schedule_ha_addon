@@ -15,12 +15,6 @@ logger = logging.getLogger("frame_tv_schedule.frame")
 
 
 @dataclass(frozen=True)
-class ArtState:
-    art_id: str = ""
-    source: str = ""
-
-
-@dataclass(frozen=True)
 class TvArtItem:
     art_id: str
     title: str = ""
@@ -33,17 +27,6 @@ class FrameClient:
         self.state_path = Path("/config/frame-client-state.json")
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def get_current_art(self) -> ArtState:
-        if self.config.push_mode == "dry_run":
-            logger.info("dry run: would read current art")
-            return ArtState(source="dry_run")
-
-        if self.config.push_mode == "local_frame_api":
-            logger.info("reading current art from Samsung Frame host=%s port=%s", self.config.tv_host, self.config.tv_port)
-            return await asyncio.to_thread(self._get_current_art_sync)
-
-        return ArtState(source="unsupported")
-
     async def show_schedule(self, image_path: Path) -> None:
         await self.show_image(image_path, label="schedule")
 
@@ -55,23 +38,6 @@ class FrameClient:
         if self.config.push_mode == "local_frame_api":
             logger.info("showing %s on Samsung Frame host=%s image=%s", label, self.config.tv_host, image_path)
             await asyncio.to_thread(self._show_image_sync, image_path, label)
-            return
-
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
-
-    async def restore_art(self, previous: ArtState | None = None) -> None:
-        if self.config.restore_mode == "none":
-            logger.info("restore disabled")
-            return
-
-        if self.config.push_mode == "dry_run":
-            target = previous.art_id if previous and previous.art_id else self.config.fallback_art_id
-            logger.info("dry run: would restore art %s", target or "(unknown)")
-            return
-
-        if self.config.push_mode == "local_frame_api":
-            logger.info("restoring art on Samsung Frame host=%s", self.config.tv_host)
-            await asyncio.to_thread(self._restore_art_sync, previous)
             return
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
@@ -123,15 +89,6 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
-    def _get_current_art_sync(self) -> ArtState:
-        with self._tv() as tv:
-            art = tv.art()
-            ensure_art_supported(art)
-            payload = art.get_current()
-            content_id = extract_content_id(payload)
-            logger.info("current Samsung Frame art id=%s", content_id or "(unknown)")
-            return ArtState(art_id=content_id, source="local_frame_api")
-
     def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
         content_id = self._ensure_uploaded_image(image_path, label)
         with self._tv() as tv:
@@ -140,26 +97,6 @@ class FrameClient:
             art.select_image(content_id, show=True)
             art.set_artmode(True)
         logger.info("showing %s art id=%s", label, content_id)
-
-    def _restore_art_sync(self, previous: ArtState | None) -> None:
-        target = ""
-        if self.config.restore_mode == "previous_art" and previous and previous.art_id:
-            target = previous.art_id
-        if not target and self.config.fallback_art_id:
-            target = self.config.fallback_art_id
-        if not target and self.config.fallback_image:
-            target = self._ensure_uploaded_fallback(Path(self.config.fallback_image))
-
-        if not target:
-            logger.info("no previous or fallback art available to restore")
-            return
-
-        with self._tv() as tv:
-            art = tv.art()
-            ensure_art_supported(art)
-            art.select_image(target, show=True)
-            art.set_artmode(True)
-        logger.info("restored art id=%s", target)
 
     def _show_fallback_sync(self) -> None:
         target = self.config.fallback_art_id

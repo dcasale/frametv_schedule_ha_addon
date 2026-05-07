@@ -28,7 +28,6 @@ class AddonConfig(BaseModel):
     afternoon_window_start: str = "14:30"
     afternoon_window_end: str = "16:30"
     display_windows: list[DisplayWindow] = Field(default_factory=list)
-    restore_mode: Literal["previous_art", "fallback_art", "none"] = "previous_art"
     fallback_art_id: str = ""
     fallback_image: str = ""
     tv_host: str = ""

@@ -76,8 +76,6 @@ Use **Generate** to test calendar/image generation without touching the TV.
 
 Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window. This action regenerates the schedule image first.
 
-Use **Restore Prior Image** to restore the art that was active before the last calendar push. This only works after the add-on has successfully read and stored a prior art ID.
-
 Use **Push Fallback Image** to show the configured fallback art. Configure either `fallback_art_id` or `fallback_image` first.
 
 Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
@@ -118,7 +116,7 @@ After uploading art, use the dropdown to:
 - **Push Selected Art**: manually show that image on the TV.
 - **Use Selected Art as Fallback**: make that image the fallback used by **Push Fallback Image**.
 
-This is the recommended safety path if restore-prior is unreliable on your TV. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image** before relying on automatic restore behavior.
+This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as fallback, and verify **Push Selected Art** and **Push Fallback Image**.
 
 ## TV art
 
@@ -158,7 +156,7 @@ afternoon_window_end: "16:30"
 
 At the start of each window, the add-on generates a fresh schedule image and then pushes it to the TV. This keeps weather and calendar data current for that window.
 
-Outside these windows the add-on restores the previous art when the TV driver can read it. If that is not supported on your model, configure fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end restore.
+Outside these windows the add-on shows the configured fallback art. Fallbacks selected from the **TV Art** page or the add-on **Art Library** page are used by both the manual **Push Fallback Image** button and the automatic window-end switch.
 
 ## Schedule image readability
 
@@ -229,11 +227,10 @@ After `dry_run` works:
 4. Save and restart the add-on.
 5. Open the add-on web UI and select **Push Calendar Image**.
 6. Watch the TV for a pairing prompt and approve it.
-7. If **Push Calendar Image** works, select **Restore Prior Image** to verify restore behavior.
-8. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Fallback**.
-9. Select **Push Fallback Image** to verify fallback behavior.
-10. Temporarily set one display window to include the current time.
-11. Select **Run Window Check**.
+7. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Fallback**.
+8. Select **Push Fallback Image** to verify fallback behavior.
+9. Temporarily set one display window to include the current time.
+10. Select **Run Window Check**.
 
 For example, if it is currently 3:05 PM, temporarily use:
 

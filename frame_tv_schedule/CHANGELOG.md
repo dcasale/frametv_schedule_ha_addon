@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15
+
+- Remove previous-art tracking and restore controls.
+- Always switch between the generated calendar image and configured fallback art.
+
 ## 0.2.14
 
 - Generate a fresh schedule image at the start of each display window instead of using a preset generation time.

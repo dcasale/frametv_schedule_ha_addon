@@ -18,7 +18,7 @@ from .art_library import ArtLibrary
 from .art_window_manager import ArtWindowManager, generated_today
 from .calendar_client import HomeAssistantCalendarClient
 from .config import config_json, load_config
-from .frame_client import ArtState, FrameClient
+from .frame_client import FrameClient
 from .renderer import ScheduleRenderer
 from .state_store import StateStore
 
@@ -209,14 +209,6 @@ async def push_calendar_route(request: Request) -> Response:
     return RedirectResponse("./", status_code=303)
 
 
-@app.post("/restore-prior", response_model=None)
-async def restore_prior_route(request: Request) -> Response:
-    result = await run_ui_action(restore_prior_image)
-    if wants_json(request):
-        return JSONResponse(result)
-    return RedirectResponse("./", status_code=303)
-
-
 @app.post("/push-fallback", response_model=None)
 async def push_fallback_route(request: Request) -> Response:
     result = await run_ui_action(push_fallback_image)
@@ -332,20 +324,20 @@ async def tick() -> dict[str, str]:
     )
 
     if should_show and not active:
-        previous = await push_schedule_to_frame("Window check", force_generate=True)
-        return {"action": "show_schedule", "previous_art": previous.art_id, "message": "Generated and pushed schedule image for the active display window."}
+        await push_schedule_to_frame("Window check", force_generate=True)
+        return {"action": "show_schedule", "message": "Generated and pushed schedule image for the active display window."}
 
     if not should_show and active:
-        await restore_window_image(state)
+        await show_window_fallback_image()
         state_store.update(
             {
-                "last_action": "Window check restored artwork after the schedule window.",
+                "last_action": "Window check showed fallback art after the schedule window.",
                 "schedule_active": False,
                 "schedule_push_mode": config.push_mode,
             }
         )
-        logger.info("window check restored art")
-        return {"action": "restore_art", "message": "Restored artwork after the schedule window."}
+        logger.info("window check showed fallback art")
+        return {"action": "show_fallback", "message": "Showed fallback art after the schedule window."}
 
     state_store.update({"last_action": "Window check completed. No display change was needed."})
     logger.info("window check completed with no display change")
@@ -356,24 +348,6 @@ async def push_calendar_image() -> dict[str, str]:
     logger.info("push calendar requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
     await push_schedule_to_frame("Manual calendar push", force_generate=True)
     return {"action": "show_schedule", "message": "Generated and pushed the calendar image."}
-
-
-async def restore_prior_image() -> dict[str, str]:
-    state = state_store.read()
-    previous_art = state.get("previous_art") or {}
-    previous = ArtState(**previous_art) if previous_art else None
-    logger.info("restore prior requested previous_art=%s", previous.art_id if previous else "(not stored)")
-    if not previous or not previous.art_id:
-        raise RuntimeError("No prior art ID was stored before the calendar image was pushed")
-    await frame_client.restore_art(previous)
-    state_store.update(
-        {
-            "last_action": "Restored prior image on the Frame TV.",
-            "schedule_active": False,
-            "schedule_push_mode": config.push_mode,
-        }
-    )
-    return {"action": "restore_prior", "message": "Restored prior image on the Frame TV."}
 
 
 async def push_fallback_image() -> dict[str, str]:
@@ -388,17 +362,7 @@ async def push_fallback_image() -> dict[str, str]:
     return result
 
 
-async def restore_window_image(state: dict[str, Any]) -> None:
-    if config.restore_mode == "none":
-        await frame_client.restore_art(None)
-        return
-
-    previous_art = state.get("previous_art") or {}
-    previous = ArtState(**previous_art) if previous_art else None
-    if config.restore_mode == "previous_art" and previous and previous.art_id:
-        await frame_client.restore_art(previous)
-        return
-
+async def show_window_fallback_image() -> None:
     await show_selected_fallback_image(allow_empty=True)
 
 
@@ -423,7 +387,6 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
         config.fallback_image or "(not set)",
     )
     if allow_empty and not config.fallback_art_id and not config.fallback_image:
-        await frame_client.restore_art(None)
         return {"action": "push_fallback", "message": "No fallback image is configured."}
 
     await frame_client.show_fallback()
@@ -500,20 +463,17 @@ async def weather_debug() -> dict[str, str]:
     return {"action": "weather_debug", "message": "Weather debug completed."}
 
 
-async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> ArtState:
+async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> None:
     await ensure_current_schedule_image(force=force_generate)
-    previous = await frame_client.get_current_art()
     await frame_client.show_schedule(renderer.output_path)
     state_store.update(
         {
             "last_action": f"{action_label} showed the schedule on the Frame TV.",
             "schedule_active": True,
             "schedule_push_mode": config.push_mode,
-            "previous_art": previous.__dict__,
         }
     )
     logger.info("%s showed schedule using push_mode=%s", action_label.lower(), config.push_mode)
-    return previous
 
 
 async def ensure_current_schedule_image(force: bool = False) -> None:
@@ -674,7 +634,6 @@ def schedule_page() -> HTMLResponse:
         <div class="subnav">
           <form method="post" action="./generate"><button>Generate</button></form>
           <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
-          <form method="post" action="./restore-prior"><button>Restore Prior Image</button></form>
           <form method="post" action="./push-fallback"><button>Push Fallback Image</button></form>
           <form method="post" action="./tick"><button>Run Window Check</button></form>
         </div>
