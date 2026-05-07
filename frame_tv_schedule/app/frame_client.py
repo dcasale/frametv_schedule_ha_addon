@@ -66,6 +66,17 @@ class FrameClient:
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
+    async def current_art(self) -> TvArtItem:
+        if self.config.push_mode == "dry_run":
+            logger.info("dry run: would read current TV art")
+            return TvArtItem(art_id="", title="Dry run")
+
+        if self.config.push_mode == "local_frame_api":
+            logger.info("reading current Samsung Frame art host=%s", self.config.tv_host)
+            return await asyncio.to_thread(self._current_art_sync)
+
+        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
     async def select_art(self, art_id: str) -> None:
         if self.config.push_mode == "dry_run":
             logger.info("dry run: would select TV art id=%s", art_id)
@@ -121,6 +132,15 @@ class FrameClient:
         items = available_art_items(payload)
         logger.info("listed %s Samsung Frame art item(s)", len(items))
         return items
+
+    def _current_art_sync(self) -> TvArtItem:
+        with self._tv() as tv:
+            art = tv.art()
+            ensure_art_supported(art)
+            payload = current_art_payload(art)
+        item = current_art_item(payload)
+        logger.info("current Samsung Frame art id=%s title=%s", item.art_id or "(unknown)", item.title or "(none)")
+        return item
 
     def _select_art_sync(self, art_id: str) -> None:
         if not art_id:
@@ -282,6 +302,18 @@ def available_art_items(payload: Any) -> list[TvArtItem]:
     return sorted(dedupe_art_items(items), key=lambda item: item.title or item.art_id)
 
 
+def current_art_item(payload: Any) -> TvArtItem:
+    return TvArtItem(art_id=extract_content_id(payload), title=extract_art_title(payload))
+
+
+def current_art_payload(art: Any) -> Any:
+    for method_name in ("get_current", "current", "get_current_image", "get_selected"):
+        method = getattr(art, method_name, None)
+        if callable(method):
+            return method()
+    raise RuntimeError("Samsung Frame Art Mode API did not expose a current art method")
+
+
 def art_payload_items(payload: Any) -> list[Any]:
     if isinstance(payload, dict):
         values = payload.get("items") or payload.get("content") or payload.get("data") or payload.get("available") or []
@@ -308,6 +340,10 @@ def extract_art_title(payload: Any) -> str:
         value = payload.get(key)
         if isinstance(value, str) and value:
             return value
+    for value in payload.values():
+        nested = extract_art_title(value)
+        if nested:
+            return nested
     return ""
 
 

@@ -133,6 +133,33 @@ async def tv_art_page() -> HTMLResponse:
     return HTMLResponse(body)
 
 
+@app.get("/current-tv")
+async def current_tv_page() -> HTMLResponse:
+    state = state_store.read()
+    current = state.get("current_tv_art", {})
+    current_html = render_current_tv_art(current, state.get("tv_art_items", []))
+    body = f"""
+    <!doctype html>
+    <html>
+      <head>
+        <title>Frame TV Schedule</title>
+        {page_styles()}
+      </head>
+      <body>
+        {nav("current-tv")}
+        {render_status(state)}
+        <h1>Current TV Image</h1>
+        <p>Refresh this page's TV status to see the current Samsung Frame art ID reported by the TV.</p>
+        <div class="subnav">
+          <form method="post" action="./refresh-current-tv"><button>Refresh Current TV Image</button></form>
+        </div>
+        {current_html}
+      </body>
+    </html>
+    """
+    return HTMLResponse(body)
+
+
 @app.get("/diagnostics")
 async def diagnostics_page() -> HTMLResponse:
     state = state_store.read()
@@ -263,6 +290,14 @@ async def set_fallback_tv_art_route(request: Request, art_id: str = Form(...)) -
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./tv-art", status_code=303)
+
+
+@app.post("/refresh-current-tv", response_model=None)
+async def refresh_current_tv_route(request: Request) -> Response:
+    result = await run_ui_action(refresh_current_tv)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./current-tv", status_code=303)
 
 
 @app.post("/calendar-debug", response_model=None)
@@ -450,6 +485,19 @@ async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
     return {"action": "set_fallback_tv_art", "art_id": art_id, "message": f"Set fallback TV art to {art_id}."}
 
 
+async def refresh_current_tv() -> dict[str, str]:
+    item = await frame_client.current_art()
+    current = {
+        "art_id": item.art_id,
+        "title": item.title,
+        "checked_at": datetime.now(ZoneInfo(config.timezone)).isoformat(),
+        "push_mode": config.push_mode,
+    }
+    state_store.update({"current_tv_art": current})
+    art_label = item.art_id or item.title or "current TV art"
+    return {"action": "refresh_current_tv", "art_id": item.art_id, "message": f"Loaded current TV image: {art_label}."}
+
+
 async def calendar_debug() -> dict[str, str]:
     start, end = window_manager.today_bounds()
     result = await calendar_client.debug_calendar_fetch(config.calendar_entities, start, end)
@@ -483,14 +531,27 @@ async def ensure_current_schedule_image(force: bool = False) -> None:
         await generate_schedule()
 
 
-async def run_ui_action(action: Any) -> dict[str, str]:
+async def run_ui_action(action: Any) -> dict[str, Any]:
     try:
-        return await action()
+        result = await action()
+        message = str(result.get("message", "Action completed.")) if isinstance(result, dict) else "Action completed."
+        state_store.update(action_status(message, "success", result if isinstance(result, dict) else {}))
+        return result
     except Exception as error:
         logger.exception("web UI action failed")
         message = f"{type(error).__name__}: {error}"
-        state_store.update({"last_action": f"Action failed: {message}"})
-        return {"action": "error", "error": message}
+        result = {"action": "error", "error": message}
+        state_store.update(action_status(f"Action failed: {message}", "error", result))
+        return result
+
+
+def action_status(message: str, status: str, result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "last_action": message,
+        "last_action_status": status,
+        "last_action_time": datetime.now(ZoneInfo(config.timezone)).isoformat(),
+        "last_action_result": result,
+    }
 
 
 def wants_json(request: Request) -> bool:
@@ -562,6 +623,43 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
             """
         )
     return "\n".join(cards) or '<p>No TV art loaded yet.</p>'
+
+
+def render_current_tv_art(current: Any, tv_art_items: Any) -> str:
+    if not isinstance(current, dict) or not current:
+        return '<div class="detail-panel"><p>No current TV image has been loaded yet.</p></div>'
+    art_id = str(current.get("art_id", "")) or "(unknown)"
+    title = str(current.get("title", "")) or "(not reported)"
+    checked_at = str(current.get("checked_at", "")) or "(not checked)"
+    push_mode = str(current.get("push_mode", "")) or "(unknown)"
+    thumbnail = current_tv_thumbnail(art_id, tv_art_items)
+    thumbnail_html = (
+        f'<img class="current-thumb" src="./tv-art-thumbnail/{escape(thumbnail)}" alt="{escape(title)}">'
+        if thumbnail
+        else '<div class="current-thumb thumb-placeholder">No thumbnail loaded</div>'
+    )
+    return f"""
+    <div class="detail-panel">
+      {thumbnail_html}
+      <dl>
+        <dt>Title</dt><dd>{escape(title)}</dd>
+        <dt>Art ID</dt><dd>{escape(art_id)}</dd>
+        <dt>Push mode</dt><dd>{escape(push_mode)}</dd>
+        <dt>Last refreshed</dt><dd>{escape(checked_at)}</dd>
+      </dl>
+    </div>
+    """
+
+
+def current_tv_thumbnail(art_id: str, tv_art_items: Any) -> str:
+    if not isinstance(tv_art_items, list):
+        return ""
+    for item in tv_art_items:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("art_id", "")) == art_id:
+            return str(item.get("thumbnail", ""))
+    return ""
 
 
 async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
@@ -661,6 +759,11 @@ def page_styles() -> str:
           .art-card img, .thumb-placeholder { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e8e0d2; border: 1px solid #cfc8ba; display: grid; place-items: center; color: #53605f; }
           .art-title { font-weight: 700; margin-top: 0.65rem; overflow-wrap: anywhere; }
           .art-id { color: #53605f; font-size: 0.85rem; overflow-wrap: anywhere; margin-top: 0.25rem; }
+          .detail-panel { background: rgba(255,255,255,0.65); border: 1px solid #cfc8ba; padding: 1rem; max-width: 58rem; }
+          .current-thumb { width: min(100%, 32rem); aspect-ratio: 16 / 9; object-fit: cover; margin-bottom: 1rem; }
+          dl { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr; gap: 0.65rem 1rem; margin: 0; }
+          dt { color: #53605f; font-weight: 700; }
+          dd { margin: 0; overflow-wrap: anywhere; }
           button { padding: 0.65rem 1rem; border: 1px solid #1f2a2a; background: #fffdf6; color: #1f2a2a; cursor: pointer; }
           button:hover { background: #1f2a2a; color: #fffdf6; }
           input, select { padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; max-width: 100%; }
@@ -668,6 +771,7 @@ def page_styles() -> str:
           .status { background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }
           .status.success { border-left: 0.35rem solid #46725d; }
           .status.error { border-left: 0.35rem solid #a54434; }
+          .status-time { color: #53605f; font-size: 0.85rem; margin-top: 0.35rem; }
           pre { background: rgba(255,255,255,0.65); padding: 1rem; overflow: auto; }
         </style>
     """
@@ -678,6 +782,7 @@ def nav(active: str) -> str:
         ("schedule", "./", "Schedule"),
         ("art", "./art", "Add-on Art"),
         ("tv-art", "./tv-art", "TV Art"),
+        ("current-tv", "./current-tv", "Current TV"),
         ("diagnostics", "./diagnostics", "Diagnostics"),
     ]
     return "<nav>" + "".join(
@@ -687,8 +792,12 @@ def nav(active: str) -> str:
 
 def render_status(state: dict[str, Any]) -> str:
     message = str(state.get("last_action", "Ready"))
-    status_class = "error" if message.startswith("Action failed:") else "success"
-    return f'<div class="status {status_class}">{escape(message)}</div>'
+    status_class = str(state.get("last_action_status", "")) or ("error" if message.startswith("Action failed:") else "success")
+    if status_class not in {"success", "error"}:
+        status_class = "success"
+    timestamp = str(state.get("last_action_time", ""))
+    time_html = f'<div class="status-time">{escape(timestamp)}</div>' if timestamp else ""
+    return f'<div class="status {status_class}">{escape(message)}{time_html}</div>'
 
 
 def json_dump(value: Any) -> str:

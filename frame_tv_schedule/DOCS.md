@@ -78,7 +78,9 @@ Use **Push Calendar Image** after switching to `local_frame_api` when you want t
 
 Use **Push Fallback Image** to show the configured fallback art. Configure either `fallback_art_id` or `fallback_image` first.
 
-Use **Run Window Check** to test whether the add-on should show or restore the schedule based on the configured display windows.
+Use **Run Window Check** to test whether the add-on should show the schedule or fallback art based on the configured display windows.
+
+After each web UI action, the status banner near the top of the page shows whether the action succeeded or failed and when it ran.
 
 Use the **Diagnostics** page and select **Run Calendar Debug** if the generated image does not show expected events. The debug output lists the configured calendar entities, the Home Assistant calendar entities visible to the add-on, the raw response shape, and sample parsed events.
 
@@ -123,6 +125,8 @@ This is the recommended safety path before relying on automatic window switching
 The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, or use it as the fallback art. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
 This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. If a thumbnail fetch fails, the TV Art page shows a placeholder for that item.
+
+The **Current TV** page is a read-only diagnostic page. Select **Refresh Current TV Image** to ask the Samsung Frame TV which art ID is currently selected. This does not change the automatic switching logic; the add-on still switches only between the generated schedule image and the configured fallback art.
 
 ## Configuration fields
 

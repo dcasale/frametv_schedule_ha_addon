@@ -7,9 +7,9 @@ The first goal is a reliable schedule image pipeline:
 - read events from Home Assistant calendars, including Apple Calendar through HA CalDAV
 - render a polished 16:9 PNG suitable for Samsung Frame Art Mode
 - display that image only during configured windows, such as 6:00-8:00 AM and 2:30-4:30 PM
-- restore the previously selected art, or a configured fallback art, outside those windows
+- show configured fallback art outside those windows
 
-Samsung Frame Art Mode upload and restore support varies by model and firmware, so the TV control layer is intentionally isolated behind a driver module.
+Samsung Frame Art Mode upload and selection support varies by model and firmware, so the TV control layer is intentionally isolated behind a driver module.
 
 ## Add-on
 

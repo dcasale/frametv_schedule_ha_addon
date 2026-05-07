@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.17
+
+- Add a Current TV page that reads and displays the current Samsung Frame art ID reported by the TV.
+- Record consistent success or failure status, timestamp, and result details for web UI actions.
+
 ## 0.2.16
 
 - Render the schedule image full-bleed without the inset panel border.
