@@ -37,7 +37,7 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("showing %s on Samsung Frame host=%s image=%s", label, self.config.tv_host, image_path)
-            await asyncio.to_thread(self._show_image_sync, image_path, label)
+            await self._run_local_operation(self._show_image_sync, image_path, label)
             return
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
@@ -49,7 +49,7 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("listing Samsung Frame art host=%s", self.config.tv_host)
-            return await asyncio.to_thread(self._list_available_art_sync)
+            return await self._run_local_operation(self._list_available_art_sync)
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
@@ -60,7 +60,7 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("reading current Samsung Frame art host=%s", self.config.tv_host)
-            return await asyncio.to_thread(self._current_art_sync)
+            return await self._run_local_operation(self._current_art_sync)
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
 
@@ -71,7 +71,7 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("selecting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
-            await asyncio.to_thread(self._select_art_sync, art_id)
+            await self._run_local_operation(self._select_art_sync, art_id)
             return
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
@@ -83,7 +83,7 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("deleting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
-            await asyncio.to_thread(self._delete_art_sync, art_id)
+            await self._run_local_operation(self._delete_art_sync, art_id)
             return
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
@@ -95,9 +95,16 @@ class FrameClient:
 
         if self.config.push_mode == "local_frame_api":
             logger.info("fetching %s Samsung Frame thumbnail(s) host=%s", len(art_ids), self.config.tv_host)
-            return await asyncio.to_thread(self._fetch_art_thumbnails_sync, art_ids)
+            return await self._run_local_operation(self._fetch_art_thumbnails_sync, art_ids)
 
         raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+
+    async def _run_local_operation(self, func: Any, *args: Any) -> Any:
+        timeout = max(60, int(self.config.tv_timeout_seconds) * 6)
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(func, *args), timeout=timeout)
+        except TimeoutError as error:
+            raise RuntimeError(f"Samsung Frame operation timed out after {timeout} seconds") from error
 
     def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
         content_id = self._ensure_uploaded_image(image_path, label)

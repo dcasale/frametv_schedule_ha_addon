@@ -163,13 +163,19 @@ At the start of each window, the add-on generates a fresh schedule image and the
 
 Outside these windows the add-on shows the configured Artwork. Artwork selected from the **TV Art** page or the add-on **Art Library** page is used by both the manual **Push Artwork** button and the automatic window-end switch.
 
+You must configure Artwork before relying on automatic window-end switching. If no Artwork is configured when a window ends, the add-on reports the failure and keeps the schedule marked active so later window checks can retry after Artwork is selected.
+
+Local Samsung Frame API calls are wrapped in an add-on timeout so a stuck upload, selection, thumbnail, or current-art request cannot block later scheduled window checks indefinitely.
+
 ## Schedule image readability
 
-The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. Event titles use a serif font when available for a warmer art-display look. All-day events are grouped in a right-side section because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
+The schedule image is designed for dim Frame TV Art Mode viewing. It uses large, high-contrast rows and scales the timed-event row height depending on how many events are on the calendar. All-day events are grouped in a right-side section because they do not have start/end times. If there are more timed events than fit comfortably, the image shows a `+ more events today` line.
 
 This is intentional: the TV should be readable from across the room, not behave like a dense calendar dashboard.
 
 Emoji in calendar titles are removed from the rendered image. The add-on uses Pillow and system fonts inside Home Assistant, and common color emoji render as missing-glyph boxes there instead of clean icons.
+
+The GitHub README includes screenshots generated from fake sample calendar and weather data. Those screenshots are documentation examples only and are not pulled from a real Home Assistant calendar.
 
 ## Weather
 

@@ -389,10 +389,10 @@ async def tick() -> dict[str, str]:
         return {"action": "show_schedule", "message": "Generated and pushed schedule image for the active display window."}
 
     if not should_show and active:
-        await show_window_fallback_image()
+        result = await show_window_fallback_image()
         state_store.update(
             {
-                "last_action": "Window check showed Artwork after the schedule window.",
+                "last_action": result["message"],
                 "schedule_active": False,
                 "schedule_push_mode": config.push_mode,
             }
@@ -423,8 +423,8 @@ async def push_fallback_image() -> dict[str, str]:
     return result
 
 
-async def show_window_fallback_image() -> None:
-    await show_selected_fallback_image(allow_empty=True)
+async def show_window_fallback_image() -> dict[str, str]:
+    return await show_selected_fallback_image()
 
 
 async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, str]:
@@ -577,6 +577,13 @@ async def weather_debug() -> dict[str, str]:
 
 async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> None:
     await ensure_current_schedule_image(force=force_generate)
+    state_store.update(
+        {
+            "last_action": f"{action_label} is showing the schedule on the Frame TV.",
+            "schedule_active": True,
+            "schedule_push_mode": config.push_mode,
+        }
+    )
     await frame_client.show_schedule(renderer.output_path)
     state_store.update(
         {

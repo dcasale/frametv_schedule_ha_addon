@@ -95,9 +95,6 @@ class ScheduleRenderer:
                         break
                     rendered_events += 1
                     draw.rounded_rectangle((timed_left, timed_cursor, timed_right, row_bottom), radius=s(20), fill="#f1eadc")
-                    row_mid = timed_cursor + ((row_bottom - timed_cursor) // 2)
-                    time_y = row_mid - (font_size(row_fonts["time"]) // 2)
-                    draw.text((timed_left + s(34), time_y), time_label, fill="#263737", font=row_fonts["time"])
                     text_x = timed_left + min(s(560), max(s(410), int((timed_right - timed_left) * 0.22)))
                     text_width_available = timed_right - text_x - s(42)
                     location_lines = 1 if event.location and not self.config.privacy_mode and row_height >= s(136) else 0
@@ -108,6 +105,8 @@ class ScheduleRenderer:
                         block_height = font_size(row_fonts["event"]) + s(12) + font_size(row_fonts["detail"])
                         title_y = timed_cursor + max(s(12), (row_height - block_height) // 2)
                         location_y = title_y + font_size(row_fonts["event"]) + s(12)
+                    time_y = title_y + max(0, (font_size(row_fonts["event"]) - font_size(row_fonts["time"])) // 2)
+                    draw.text((timed_left + s(34), time_y), time_label, fill="#263737", font=row_fonts["time"])
                     draw_wrapped_text(
                         draw,
                         summary(event, self.config.privacy_mode),
@@ -143,7 +142,7 @@ class ScheduleRenderer:
                 draw,
                 all_day,
                 (all_day_left, content_top + s(70), all_day_right, content_bottom),
-                load_event_font(s(62), bold=True),
+                load_font(s(62), bold=True),
                 small_font,
                 self.config.privacy_mode,
                 scale,
@@ -202,10 +201,10 @@ def minimum_row_height(event_count: int, scale: float = 1.0) -> int:
 
 def row_font_set(row_height: int, scale: float = 1.0) -> dict[str, ImageFont.FreeTypeFont | ImageFont.ImageFont]:
     if row_height >= scaled(180, scale):
-        return {"time": load_font(scaled(58, scale), bold=True), "event": load_event_font(scaled(68, scale), bold=True), "detail": load_font(scaled(42, scale))}
+        return {"time": load_font(scaled(58, scale), bold=True), "event": load_font(scaled(68, scale), bold=True), "detail": load_font(scaled(42, scale))}
     if row_height >= scaled(120, scale):
-        return {"time": load_font(scaled(50, scale), bold=True), "event": load_event_font(scaled(58, scale), bold=True), "detail": load_font(scaled(36, scale))}
-    return {"time": load_font(scaled(36, scale), bold=True), "event": load_event_font(scaled(40, scale), bold=True), "detail": load_font(scaled(26, scale))}
+        return {"time": load_font(scaled(50, scale), bold=True), "event": load_font(scaled(58, scale), bold=True), "detail": load_font(scaled(36, scale))}
+    return {"time": load_font(scaled(36, scale), bold=True), "event": load_font(scaled(40, scale), bold=True), "detail": load_font(scaled(26, scale))}
 
 
 def draw_all_day_box(
@@ -290,7 +289,7 @@ def draw_weather_band(
     if not forecasts:
         return
 
-    grid_top = top + s(34)
+    grid_top = top + s(26)
     max_columns = max(1, int((right - left - s(72)) / s(360)))
     forecasts = forecasts[:max_columns]
     column_width = (right - left - s(72)) / len(forecasts)
@@ -398,20 +397,6 @@ def text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFon
 
 def font_size(font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> int:
     return int(getattr(font, "size", 48))
-
-
-def load_event_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for path in (
-        "/usr/share/fonts/ttf-dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/ttf-dejavu/DejaVuSerif.ttf",
-        "/usr/share/fonts/TTF/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/TTF/DejaVuSerif.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/dejavu/DejaVuSerif.ttf",
-        "/System/Library/Fonts/Supplemental/Georgia Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Georgia.ttf",
-    ):
-        try:
-            return ImageFont.truetype(path, size=size)
-        except OSError:
-            continue
-    return load_font(size, bold=bold)
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:

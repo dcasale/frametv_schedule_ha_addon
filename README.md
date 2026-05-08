@@ -23,6 +23,16 @@ Use the add-on's **Documentation** tab for setup details. The most important fir
 
 After starting the add-on, select **Open Web UI**, then select **Generate** to render and preview the first schedule image.
 
+## Screenshots
+
+These images use generated sample events and weather only.
+
+![Sample generated schedule artwork](docs/images/sample-schedule.png)
+
+![Schedule page in the add-on web UI](docs/images/addon-schedule-page.png)
+
+![TV art gallery in the add-on web UI](docs/images/tv-art-gallery.png)
+
 The add-on does not need Apple credentials or Samsung account credentials. Apple Calendar credentials stay in Home Assistant's CalDAV integration. Samsung Frame control uses a local TV pairing prompt and stores the resulting token in the add-on config directory.
 
 If calendar diagnostics reports that the Home Assistant supervisor token is unavailable, update the add-on first. If it remains unavailable, uninstall and reinstall the add-on after reloading the repository so Home Assistant reapplies the add-on API permissions.

@@ -4,3 +4,4 @@ Generate a daily schedule artwork image from Home Assistant calendar entities an
 
 See `DOCS.md` for configuration details.
 
+The repository README includes sample screenshots generated from fake calendar and weather data.

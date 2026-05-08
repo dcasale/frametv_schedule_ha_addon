@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.22
+
+- Restore event titles to the original sans font.
+- Align timed-event time labels with event titles.
+- Nudge weather hour labels upward to leave more room for weather icons.
+- Fail and retry window-end Artwork restore when no Artwork is configured instead of marking the schedule inactive.
+- Mark schedule pushes active before Samsung image selection can hang and time out long-running local TV operations.
+- Add sample GitHub documentation screenshots generated from fake calendar and weather data.
+
 ## 0.2.21
 
 - Remove the weather strip title and reposition weather times/icons to avoid overlap.
