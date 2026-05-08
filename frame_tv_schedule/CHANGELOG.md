@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.23
+
+- Regenerate and push the schedule at the start of a display window even if the previous window failed to restore Artwork and left the schedule marked active.
+- Stop calling the Samsung `set_artmode` command after selecting artwork because some TVs hang there; `select_image(..., show=True)` is now the display command.
+- Record scheduled window-check failures in add-on state instead of raising repeated scheduler tracebacks.
+
 ## 0.2.22
 
 - Restore event titles to the original sans font.

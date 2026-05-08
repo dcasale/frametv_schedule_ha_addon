@@ -17,6 +17,11 @@ class ArtWindowManager:
         local_time = moment.astimezone(self.timezone).time()
         return any(in_window(local_time, window) for window in self.config.display_windows)
 
+    def is_window_start(self, moment: datetime | None = None) -> bool:
+        moment = moment or datetime.now(self.timezone)
+        local_time = moment.astimezone(self.timezone).time()
+        return any(same_hour_minute(local_time, parse_time(window.start)) for window in self.config.display_windows)
+
     def today_bounds(self, moment: datetime | None = None) -> tuple[datetime, datetime]:
         moment = moment or datetime.now(self.timezone)
         today = moment.astimezone(self.timezone).date()
@@ -36,6 +41,10 @@ def in_window(value: time, window: DisplayWindow) -> bool:
 def parse_time(value: str) -> time:
     hour, minute = value.split(":", 1)
     return time(hour=int(hour), minute=int(minute))
+
+
+def same_hour_minute(left: time, right: time) -> bool:
+    return left.hour == right.hour and left.minute == right.minute
 
 
 def generated_today(state: dict[str, Any], moment: datetime, timezone: ZoneInfo) -> bool:

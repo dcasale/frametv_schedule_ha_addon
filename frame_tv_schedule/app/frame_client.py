@@ -112,7 +112,6 @@ class FrameClient:
             art = tv.art()
             ensure_art_supported(art)
             art.select_image(content_id, show=True)
-            art.set_artmode(True)
         logger.info("showing %s art id=%s", label, content_id)
 
     def _list_available_art_sync(self) -> list[TvArtItem]:
@@ -140,7 +139,6 @@ class FrameClient:
             art = tv.art()
             ensure_art_supported(art)
             art.select_image(art_id, show=True)
-            art.set_artmode(True)
         logger.info("selected Samsung Frame art id=%s", art_id)
 
     def _delete_art_sync(self, art_id: str) -> None:

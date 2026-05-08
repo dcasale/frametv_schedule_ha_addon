@@ -163,9 +163,11 @@ At the start of each window, the add-on generates a fresh schedule image and the
 
 Outside these windows the add-on shows the configured Artwork. Artwork selected from the **TV Art** page or the add-on **Art Library** page is used by both the manual **Push Artwork** button and the automatic window-end switch.
 
+If the previous Artwork restore failed and left the schedule marked active, the next display window start still regenerates and pushes a fresh schedule image.
+
 You must configure Artwork before relying on automatic window-end switching. If no Artwork is configured when a window ends, the add-on reports the failure and keeps the schedule marked active so later window checks can retry after Artwork is selected.
 
-Local Samsung Frame API calls are wrapped in an add-on timeout so a stuck upload, selection, thumbnail, or current-art request cannot block later scheduled window checks indefinitely.
+Local Samsung Frame API calls are wrapped in an add-on timeout so a stuck upload, selection, thumbnail, or current-art request cannot block later scheduled window checks indefinitely. The add-on selects artwork with Samsung's `select_image(..., show=True)` call and does not call the separate `set_artmode` command because some TVs hang on that command after selection.
 
 ## Schedule image readability
 

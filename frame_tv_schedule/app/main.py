@@ -372,19 +372,35 @@ async def generate_schedule_action() -> dict[str, str]:
 
 
 async def tick() -> dict[str, str]:
-    should_show = window_manager.should_show_schedule()
+    try:
+        return await tick_impl()
+    except Exception as error:
+        logger.exception("window check failed")
+        message = f"{type(error).__name__}: {error}"
+        result = {"action": "error", "error": message, "message": f"Window check failed: {message}"}
+        state_store.update(action_status(result["message"], "error", result))
+        return result
+
+
+async def tick_impl() -> dict[str, str]:
+    now = datetime.now(ZoneInfo(config.timezone))
+    should_show = window_manager.should_show_schedule(now)
+    at_window_start = window_manager.is_window_start(now)
     state = state_store.read()
     active = bool(state.get("schedule_active")) and state.get("schedule_push_mode") == config.push_mode
+    current_schedule = generated_today(state, now, ZoneInfo(config.timezone))
     logger.info(
-        "window check push_mode=%s should_show=%s active=%s stored_push_mode=%s tv_host=%s",
+        "window check push_mode=%s should_show=%s active=%s current_schedule=%s at_window_start=%s stored_push_mode=%s tv_host=%s",
         config.push_mode,
         should_show,
         active,
+        current_schedule,
+        at_window_start,
         state.get("schedule_push_mode", ""),
         config.tv_host or "(not set)",
     )
 
-    if should_show and not active:
+    if should_show and (not active or at_window_start or not current_schedule):
         await push_schedule_to_frame("Window check", force_generate=True)
         return {"action": "show_schedule", "message": "Generated and pushed schedule image for the active display window."}
 
@@ -606,7 +622,8 @@ async def run_ui_action(action: Any) -> dict[str, Any]:
     try:
         result = await action()
         message = str(result.get("message", "Action completed.")) if isinstance(result, dict) else "Action completed."
-        state_store.update(action_status(message, "success", result if isinstance(result, dict) else {}))
+        status = "error" if isinstance(result, dict) and result.get("action") == "error" else "success"
+        state_store.update(action_status(message, status, result if isinstance(result, dict) else {}))
         return result
     except Exception as error:
         logger.exception("web UI action failed")

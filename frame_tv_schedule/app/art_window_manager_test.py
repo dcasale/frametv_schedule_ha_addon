@@ -22,6 +22,13 @@ class ArtWindowManagerTest(unittest.TestCase):
         self.assertTrue(manager.should_show_schedule(datetime(2026, 5, 5, 14, 30, tzinfo=ZoneInfo("UTC"))))
         self.assertFalse(manager.should_show_schedule(datetime(2026, 5, 5, 15, 0, tzinfo=ZoneInfo("UTC"))))
 
+    def test_is_window_start_matches_start_minute(self) -> None:
+        config = AddonConfig(timezone="America/Los_Angeles", morning_window_start="06:00", morning_window_end="08:00")
+        manager = ArtWindowManager(config)
+
+        self.assertTrue(manager.is_window_start(datetime(2026, 5, 5, 6, 0, 30, tzinfo=ZoneInfo("America/Los_Angeles"))))
+        self.assertFalse(manager.is_window_start(datetime(2026, 5, 5, 6, 1, tzinfo=ZoneInfo("America/Los_Angeles"))))
+
     def test_generated_today_uses_local_timezone(self) -> None:
         zone = ZoneInfo("America/Los_Angeles")
 
