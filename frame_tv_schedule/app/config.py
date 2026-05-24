@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class DisplayWindow(BaseModel):
-    start: str
-    end: str
+    start: str | None = ""
+    end: str | None = ""
 
 
 class AddonConfig(BaseModel):
@@ -24,15 +24,15 @@ class AddonConfig(BaseModel):
     image_width: int = 3840
     image_height: int = 2160
     refresh_minutes: int = 30
-    morning_window_start: str = "06:00"
-    morning_window_end: str = "08:00"
-    afternoon_window_start: str = "14:30"
-    afternoon_window_end: str = "16:30"
+    morning_window_start: str | None = ""
+    morning_window_end: str | None = ""
+    afternoon_window_start: str | None = ""
+    afternoon_window_end: str | None = ""
     display_windows: list[DisplayWindow] = Field(default_factory=list)
-    weekend_morning_window_start: str = "06:00"
-    weekend_morning_window_end: str = "08:00"
-    weekend_afternoon_window_start: str = "14:30"
-    weekend_afternoon_window_end: str = "16:30"
+    weekend_morning_window_start: str | None = ""
+    weekend_morning_window_end: str | None = ""
+    weekend_afternoon_window_start: str | None = ""
+    weekend_afternoon_window_end: str | None = ""
     weekend_display_windows: list[DisplayWindow] = Field(default_factory=list)
     tv_host: str = ""
     tv_port: int = 8002
@@ -99,9 +99,13 @@ def normalize_calendar_entity(value: str) -> str:
     return f"calendar.{slug}" if slug else entity
 
 
-def display_windows_from_fields(*pairs: tuple[str, str]) -> list[DisplayWindow]:
+def display_windows_from_fields(*pairs: tuple[str | None, str | None]) -> list[DisplayWindow]:
     return enabled_display_windows(DisplayWindow(start=start, end=end) for start, end in pairs)
 
 
 def enabled_display_windows(windows: Iterable[DisplayWindow]) -> list[DisplayWindow]:
-    return [window for window in windows if window.start.strip() and window.end.strip()]
+    return [window for window in windows if clean_string(window.start) and clean_string(window.end)]
+
+
+def clean_string(value: str | None) -> str:
+    return value.strip() if isinstance(value, str) else ""

@@ -68,7 +68,7 @@ class ArtWindowManagerTest(unittest.TestCase):
 
         self.assertEqual(
             [value.strftime("%H:%M") for value in manager.schedule_boundary_times()],
-            ["06:00", "08:00", "09:00", "11:00", "14:30", "16:30"],
+            ["06:00", "08:00", "09:00", "11:00"],
         )
 
     def test_blank_disabled_windows_do_not_create_boundary_times(self) -> None:

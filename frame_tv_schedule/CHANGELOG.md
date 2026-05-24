@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.26
+
+- Remove default display-window times from the add-on options and app config so blank schedule windows stay disabled after restart.
+
 ## 0.2.25
 
 - Treat blank display-window start or end fields as disabled windows, so they do not schedule checks or trigger Frame TV image swaps.

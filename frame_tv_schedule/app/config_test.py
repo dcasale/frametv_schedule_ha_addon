@@ -64,6 +64,25 @@ class ConfigTest(unittest.TestCase):
 
         self.assertEqual(config.display_windows, [])
 
+    def test_null_window_fields_disable_that_window(self) -> None:
+        config = AddonConfig(
+            morning_window_start=None,
+            morning_window_end="08:00",
+            afternoon_window_start="14:45",
+            afternoon_window_end=None,
+            weekend_morning_window_start=None,
+            weekend_morning_window_end=None,
+        )
+
+        self.assertEqual(config.display_windows, [])
+        self.assertEqual(config.weekend_display_windows, [])
+
+    def test_window_fields_have_no_default_display_windows(self) -> None:
+        config = AddonConfig()
+
+        self.assertEqual(config.display_windows, [])
+        self.assertEqual(config.weekend_display_windows, [])
+
     def test_calendar_friendly_names_are_normalized_to_entity_ids(self) -> None:
         config = AddonConfig(
             calendar_entity="Family",

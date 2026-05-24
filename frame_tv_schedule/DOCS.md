@@ -169,9 +169,11 @@ weekend_afternoon_window_end: "17:30"
 
 At the start of each window, the add-on generates a fresh schedule image and then pushes it to the TV. This keeps weather and calendar data current for that window.
 
-Saturday and Sunday use the weekend fields. They default to the same times as the weekday fields so existing configurations keep their current behavior until you change the weekend values.
+Saturday and Sunday use the weekend fields.
 
 Leave either time in a window blank to disable that image switch. Disabled windows are removed from the active schedule window list, so they do not schedule a boundary check and do not push a schedule image to the TV.
+
+The window fields do not have default times. Configure both start and end for each image switch you want the add-on to run.
 
 Outside these windows the add-on shows the configured Artwork. Artwork selected from the **TV Art** page or the add-on **Art Library** page is used by both the manual **Push Artwork** button and the automatic window-end switch.
 
