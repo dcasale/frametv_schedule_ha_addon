@@ -37,6 +37,33 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.weekend_display_windows[1].start, "16:00")
         self.assertEqual(config.weekend_display_windows[1].end, "18:00")
 
+    def test_blank_simple_window_fields_disable_that_window(self) -> None:
+        config = AddonConfig(
+            morning_window_start="",
+            morning_window_end="",
+            afternoon_window_start="14:45",
+            afternoon_window_end="16:45",
+            weekend_morning_window_start="08:00",
+            weekend_morning_window_end="10:00",
+            weekend_afternoon_window_start="",
+            weekend_afternoon_window_end="",
+        )
+
+        self.assertEqual(len(config.display_windows), 1)
+        self.assertEqual(config.display_windows[0].start, "14:45")
+        self.assertEqual(len(config.weekend_display_windows), 1)
+        self.assertEqual(config.weekend_display_windows[0].start, "08:00")
+
+    def test_partially_blank_window_fields_disable_that_window(self) -> None:
+        config = AddonConfig(
+            morning_window_start="06:00",
+            morning_window_end="",
+            afternoon_window_start="",
+            afternoon_window_end="16:45",
+        )
+
+        self.assertEqual(config.display_windows, [])
+
     def test_calendar_friendly_names_are_normalized_to_entity_ids(self) -> None:
         config = AddonConfig(
             calendar_entity="Family",
@@ -65,6 +92,12 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.display_windows[0].start, "07:00")
         self.assertEqual(len(config.weekend_display_windows), 1)
         self.assertEqual(config.weekend_display_windows[0].start, "09:00")
+
+    def test_existing_list_options_drop_blank_windows(self) -> None:
+        config = AddonConfig(display_windows=[{"start": "07:00", "end": "08:00"}, {"start": "", "end": ""}])
+
+        self.assertEqual(len(config.display_windows), 1)
+        self.assertEqual(config.display_windows[0].start, "07:00")
 
     def test_manual_home_assistant_api_defaults_are_available(self) -> None:
         config = AddonConfig()

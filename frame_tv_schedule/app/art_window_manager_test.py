@@ -71,6 +71,22 @@ class ArtWindowManagerTest(unittest.TestCase):
             ["06:00", "08:00", "09:00", "11:00", "14:30", "16:30"],
         )
 
+    def test_blank_disabled_windows_do_not_create_boundary_times(self) -> None:
+        config = AddonConfig(
+            morning_window_start="",
+            morning_window_end="",
+            afternoon_window_start="14:30",
+            afternoon_window_end="16:30",
+            weekend_morning_window_start="",
+            weekend_morning_window_end="",
+            weekend_afternoon_window_start="",
+            weekend_afternoon_window_end="",
+        )
+        manager = ArtWindowManager(config)
+
+        self.assertFalse(manager.should_show_schedule(datetime(2026, 5, 9, 14, 45, tzinfo=ZoneInfo("America/Los_Angeles"))))
+        self.assertEqual([value.strftime("%H:%M") for value in manager.schedule_boundary_times()], ["14:30", "16:30"])
+
     def test_generated_today_uses_local_timezone(self) -> None:
         zone = ZoneInfo("America/Los_Angeles")
 

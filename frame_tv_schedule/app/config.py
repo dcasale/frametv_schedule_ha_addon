@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+from collections.abc import Iterable
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -57,17 +58,20 @@ class AddonConfig(BaseModel):
         if simple_calendar_entities:
             self.calendar_entities = simple_calendar_entities
 
-        simple_windows = [
-            DisplayWindow(start=self.morning_window_start, end=self.morning_window_end),
-            DisplayWindow(start=self.afternoon_window_start, end=self.afternoon_window_end),
-        ]
         if not self.display_windows:
-            self.display_windows = simple_windows
+            self.display_windows = display_windows_from_fields(
+                (self.morning_window_start, self.morning_window_end),
+                (self.afternoon_window_start, self.afternoon_window_end),
+            )
+        else:
+            self.display_windows = enabled_display_windows(self.display_windows)
         if not self.weekend_display_windows:
-            self.weekend_display_windows = [
-                DisplayWindow(start=self.weekend_morning_window_start, end=self.weekend_morning_window_end),
-                DisplayWindow(start=self.weekend_afternoon_window_start, end=self.weekend_afternoon_window_end),
-            ]
+            self.weekend_display_windows = display_windows_from_fields(
+                (self.weekend_morning_window_start, self.weekend_morning_window_end),
+                (self.weekend_afternoon_window_start, self.weekend_afternoon_window_end),
+            )
+        else:
+            self.weekend_display_windows = enabled_display_windows(self.weekend_display_windows)
         return self
 
 
@@ -93,3 +97,11 @@ def normalize_calendar_entity(value: str) -> str:
         return entity
     slug = re.sub(r"[^a-z0-9_]+", "_", entity.lower()).strip("_")
     return f"calendar.{slug}" if slug else entity
+
+
+def display_windows_from_fields(*pairs: tuple[str, str]) -> list[DisplayWindow]:
+    return enabled_display_windows(DisplayWindow(start=start, end=end) for start, end in pairs)
+
+
+def enabled_display_windows(windows: Iterable[DisplayWindow]) -> list[DisplayWindow]:
+    return [window for window in windows if window.start.strip() and window.end.strip()]

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.25
+
+- Treat blank display-window start or end fields as disabled windows, so they do not schedule checks or trigger Frame TV image swaps.
+
 ## 0.2.24
 
 - Add separate weekend display-window fields so Saturday and Sunday can use different schedule times from weekdays.
