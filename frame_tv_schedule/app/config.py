@@ -28,6 +28,11 @@ class AddonConfig(BaseModel):
     afternoon_window_start: str = "14:30"
     afternoon_window_end: str = "16:30"
     display_windows: list[DisplayWindow] = Field(default_factory=list)
+    weekend_morning_window_start: str = "06:00"
+    weekend_morning_window_end: str = "08:00"
+    weekend_afternoon_window_start: str = "14:30"
+    weekend_afternoon_window_end: str = "16:30"
+    weekend_display_windows: list[DisplayWindow] = Field(default_factory=list)
     tv_host: str = ""
     tv_port: int = 8002
     tv_name: str = "Frame TV"
@@ -58,6 +63,11 @@ class AddonConfig(BaseModel):
         ]
         if not self.display_windows:
             self.display_windows = simple_windows
+        if not self.weekend_display_windows:
+            self.weekend_display_windows = [
+                DisplayWindow(start=self.weekend_morning_window_start, end=self.weekend_morning_window_end),
+                DisplayWindow(start=self.weekend_afternoon_window_start, end=self.weekend_afternoon_window_end),
+            ]
         return self
 
 

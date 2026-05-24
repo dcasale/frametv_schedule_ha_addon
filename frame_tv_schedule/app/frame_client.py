@@ -21,6 +21,12 @@ class TvArtItem:
     thumbnail: str = ""
 
 
+@dataclass(frozen=True)
+class UploadedFrameImage:
+    art_id: str
+    stale_schedule_art_ids: tuple[str, ...] = ()
+
+
 class FrameClient:
     def __init__(self, config: AddonConfig) -> None:
         self.config = config
@@ -107,12 +113,14 @@ class FrameClient:
             raise RuntimeError(f"Samsung Frame operation timed out after {timeout} seconds") from error
 
     def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
-        content_id = self._ensure_uploaded_image(image_path, label)
+        upload = self._ensure_uploaded_image(image_path, label)
         with self._tv() as tv:
             art = tv.art()
             ensure_art_supported(art)
-            art.select_image(content_id, show=True)
-        logger.info("showing %s art id=%s", label, content_id)
+            art.select_image(upload.art_id, show=True)
+        if upload.stale_schedule_art_ids:
+            self._purge_stale_schedule_art(upload.art_id, upload.stale_schedule_art_ids)
+        logger.info("showing %s art id=%s", label, upload.art_id)
 
     def _list_available_art_sync(self) -> list[TvArtItem]:
         with self._tv() as tv:
@@ -182,21 +190,46 @@ class FrameClient:
         return thumbnails
 
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
-        return self._ensure_uploaded_image(image_path, "schedule")
+        return self._ensure_uploaded_image(image_path, "schedule").art_id
 
-    def _ensure_uploaded_image(self, image_path: Path, label: str) -> str:
+    def _ensure_uploaded_image(self, image_path: Path, label: str) -> UploadedFrameImage:
         image_hash = file_sha256(image_path)
         state = self._read_state()
         sha_key = f"{label}_image_sha256"
         art_key = f"{label}_art_id"
         if state.get(sha_key) == image_hash and state.get(art_key):
             logger.info("using cached %s art id=%s", label, state[art_key])
-            return str(state[art_key])
+            content_id = str(state[art_key])
+            if label == "schedule":
+                tracked_ids = schedule_art_ids(state, current_art_id=content_id)
+                self._write_state({**state, "schedule_art_ids": tracked_ids})
+                return UploadedFrameImage(content_id, stale_schedule_art_ids=tuple(art_id for art_id in tracked_ids if art_id != content_id))
+            return UploadedFrameImage(content_id)
 
         content_id = self._upload_image(image_path)
         logger.info("uploaded %s image as art id=%s", label, content_id)
-        self._write_state({**state, sha_key: image_hash, art_key: content_id})
-        return content_id
+        next_state = {**state, sha_key: image_hash, art_key: content_id}
+        stale_schedule_art_ids: tuple[str, ...] = ()
+        if label == "schedule":
+            tracked_ids = schedule_art_ids(state, current_art_id=content_id)
+            stale_schedule_art_ids = tuple(art_id for art_id in tracked_ids if art_id != content_id)
+            next_state["schedule_art_ids"] = tracked_ids
+        self._write_state(next_state)
+        return UploadedFrameImage(content_id, stale_schedule_art_ids=stale_schedule_art_ids)
+
+    def _purge_stale_schedule_art(self, current_art_id: str, stale_art_ids: tuple[str, ...]) -> None:
+        failed: list[str] = []
+        for art_id in stale_art_ids:
+            try:
+                self._delete_art_sync(art_id)
+            except Exception:
+                failed.append(art_id)
+                logger.exception("failed to delete stale schedule art id=%s", art_id)
+
+        state = self._read_state()
+        state["schedule_art_id"] = current_art_id
+        state["schedule_art_ids"] = schedule_art_ids({"schedule_art_ids": [current_art_id, *failed]}, current_art_id=current_art_id)
+        self._write_state(state)
 
     def _upload_image(self, image_path: Path) -> str:
         if not image_path.exists():
@@ -271,6 +304,24 @@ def file_sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def schedule_art_ids(state: dict[str, Any], current_art_id: str = "") -> list[str]:
+    candidates: list[Any] = [current_art_id, state.get("schedule_art_id")]
+    tracked = state.get("schedule_art_ids")
+    if isinstance(tracked, list):
+        candidates.extend(tracked)
+
+    ids: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if not isinstance(candidate, str) or not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        ids.append(candidate)
+    return ids
 
 
 def available_content_ids(payload: Any) -> set[str]:

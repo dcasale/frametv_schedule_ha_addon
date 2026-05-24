@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from .frame_client import available_art_items, available_content_ids, current_art_item, extract_content_id, file_sha256, thumbnail_bytes
+from .frame_client import available_art_items, available_content_ids, current_art_item, extract_content_id, file_sha256, schedule_art_ids, thumbnail_bytes
 
 
 class FrameClientHelpersTest(unittest.TestCase):
@@ -36,6 +36,14 @@ class FrameClientHelpersTest(unittest.TestCase):
             path = Path(directory) / "image.png"
             path.write_bytes(b"schedule")
             self.assertEqual(file_sha256(path), file_sha256(path))
+
+    def test_schedule_art_ids_keep_current_first_and_dedupe_legacy_state(self) -> None:
+        state = {
+            "schedule_art_id": "OLD-1",
+            "schedule_art_ids": ["OLD-2", "OLD-1", "", "OLD-3"],
+        }
+
+        self.assertEqual(schedule_art_ids(state, current_art_id="CURRENT"), ["CURRENT", "OLD-1", "OLD-2", "OLD-3"])
 
 
 if __name__ == "__main__":

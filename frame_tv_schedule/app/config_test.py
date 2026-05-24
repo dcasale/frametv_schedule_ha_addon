@@ -24,6 +24,19 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.display_windows[1].start, "14:45")
         self.assertEqual(config.display_windows[1].end, "16:45")
 
+    def test_weekend_simple_fields_populate_weekend_windows(self) -> None:
+        config = AddonConfig(
+            weekend_morning_window_start="08:00",
+            weekend_morning_window_end="10:00",
+            weekend_afternoon_window_start="16:00",
+            weekend_afternoon_window_end="18:00",
+        )
+
+        self.assertEqual(config.weekend_display_windows[0].start, "08:00")
+        self.assertEqual(config.weekend_display_windows[0].end, "10:00")
+        self.assertEqual(config.weekend_display_windows[1].start, "16:00")
+        self.assertEqual(config.weekend_display_windows[1].end, "18:00")
+
     def test_calendar_friendly_names_are_normalized_to_entity_ids(self) -> None:
         config = AddonConfig(
             calendar_entity="Family",
@@ -39,7 +52,8 @@ class ConfigTest(unittest.TestCase):
                 """
                 {
                   "calendar_entities": ["calendar.family"],
-                  "display_windows": [{"start": "07:00", "end": "08:00"}]
+                  "display_windows": [{"start": "07:00", "end": "08:00"}],
+                  "weekend_display_windows": [{"start": "09:00", "end": "10:00"}]
                 }
                 """
             )
@@ -49,6 +63,8 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(config.calendar_entities, ["calendar.family"])
         self.assertEqual(len(config.display_windows), 1)
         self.assertEqual(config.display_windows[0].start, "07:00")
+        self.assertEqual(len(config.weekend_display_windows), 1)
+        self.assertEqual(config.weekend_display_windows[0].start, "09:00")
 
     def test_manual_home_assistant_api_defaults_are_available(self) -> None:
         config = AddonConfig()

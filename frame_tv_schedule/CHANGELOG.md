@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.24
+
+- Add separate weekend display-window fields so Saturday and Sunday can use different schedule times from weekdays.
+- Delete older tracked Samsung Frame schedule uploads after the current schedule image is selected, and keep only the current local `schedule*.png` image.
+
 ## 0.2.23
 
 - Regenerate and push the schedule at the start of a display window even if the previous window failed to restore Artwork and left the schedule marked active.

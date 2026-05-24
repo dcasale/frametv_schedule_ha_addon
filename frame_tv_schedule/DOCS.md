@@ -50,6 +50,10 @@ morning_window_start: 06:00
 morning_window_end: 08:00
 afternoon_window_start: 14:30
 afternoon_window_end: 16:30
+weekend_morning_window_start: 06:00
+weekend_morning_window_end: 08:00
+weekend_afternoon_window_start: 14:30
+weekend_afternoon_window_end: 16:30
 push_mode: dry_run
 privacy_mode: false
 ```
@@ -157,9 +161,15 @@ morning_window_start: "06:00"
 morning_window_end: "08:00"
 afternoon_window_start: "14:30"
 afternoon_window_end: "16:30"
+weekend_morning_window_start: "08:00"
+weekend_morning_window_end: "10:00"
+weekend_afternoon_window_start: "15:30"
+weekend_afternoon_window_end: "17:30"
 ```
 
 At the start of each window, the add-on generates a fresh schedule image and then pushes it to the TV. This keeps weather and calendar data current for that window.
+
+Saturday and Sunday use the weekend fields. They default to the same times as the weekday fields so existing configurations keep their current behavior until you change the weekend values. To disable a weekend window, set its start and end to the same time.
 
 Outside these windows the add-on shows the configured Artwork. Artwork selected from the **TV Art** page or the add-on **Art Library** page is used by both the manual **Push Artwork** button and the automatic window-end switch.
 
@@ -261,3 +271,5 @@ The add-on logs should show entries for `push_mode`, `tv_host`, whether a window
 ## Generated files
 
 The rendered schedule image and runtime state are stored under `/config` inside the add-on container. Home Assistant maps this to the add-on's backed-up config directory. After a schedule image is generated successfully, the add-on removes older `schedule*.png` files from that same directory and keeps the current schedule image.
+
+When `push_mode` is `local_frame_api`, the add-on also tracks the Samsung Frame art IDs it uploaded for schedule images. After selecting the current schedule image, it deletes older tracked schedule uploads from the TV and keeps the current schedule art ID in state. It does not delete manually uploaded Artwork or TV art items that were not created as schedule images by this add-on.

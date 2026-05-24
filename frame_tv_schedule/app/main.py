@@ -40,16 +40,16 @@ scheduler = AsyncIOScheduler(timezone=ZoneInfo(config.timezone))
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info(
-        "starting add-on push_mode=%s tv_host=%s calendar_entities=%s display_windows=%s",
+        "starting add-on push_mode=%s tv_host=%s calendar_entities=%s display_windows=%s weekend_display_windows=%s",
         config.push_mode,
         config.tv_host or "(not set)",
         config.calendar_entities,
         [window.model_dump() for window in config.display_windows],
+        [window.model_dump() for window in config.weekend_display_windows],
     )
     scheduler.add_job(tick, "interval", minutes=max(config.refresh_minutes, 1), next_run_time=datetime.now(ZoneInfo(config.timezone)))
-    for window in config.display_windows:
-        scheduler.add_job(tick, "cron", hour=parse_hour(window.start), minute=parse_minute(window.start))
-        scheduler.add_job(tick, "cron", hour=parse_hour(window.end), minute=parse_minute(window.end))
+    for boundary in window_manager.schedule_boundary_times():
+        scheduler.add_job(tick, "cron", hour=boundary.hour, minute=boundary.minute)
     scheduler.start()
     yield
     scheduler.shutdown(wait=False)
