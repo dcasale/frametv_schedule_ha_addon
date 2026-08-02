@@ -13,6 +13,9 @@ because this project now has its own docs and specifics worth stating.)*
 docs/VISION.md                    what it is, who it serves — ⚠️ AI DRAFT, NEEDS DANNY'S REVIEW
 docs/ARCHITECTURE.md              module shape, TV driver isolation, packaging
 docs/INFRASTRUCTURE.md            distribution, HA runtime footprint, install target
+docs/DEPLOYMENT_GUIDE.md          release runbook — a push reaches real users
+docs/SECRETS.md                   what secrets exist; what must never be logged
+SECURITY.md                       public disclosure policy (repo is PUBLIC)
 frame_tv_schedule/DOCS.md         user-facing setup (the add-on's own docs)
 frame_tv_schedule/CHANGELOG.md    release history
 docs/BACKLOG.md                   open work
