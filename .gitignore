@@ -7,3 +7,7 @@ __pycache__/
 .ruff_cache/
 frame_tv_schedule/*.tar
 frame_tv_schedule/build/
+
+# GitHub PAT for gh CLI (fine-grained, HA add-on repos) — never commit
+.gh_token
+.env
