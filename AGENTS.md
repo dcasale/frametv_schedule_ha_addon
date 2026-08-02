@@ -15,7 +15,7 @@ docs/ARCHITECTURE.md              module shape, TV driver isolation, packaging
 docs/INFRASTRUCTURE.md            distribution, HA runtime footprint, install target
 frame_tv_schedule/DOCS.md         user-facing setup (the add-on's own docs)
 frame_tv_schedule/CHANGELOG.md    release history
-BACKLOG.md                        open work
+docs/BACKLOG.md                   open work
 ```
 
 > **⚠️ `docs/VISION.md` was drafted by an agent on 2026-08-02 and has not been
