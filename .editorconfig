@@ -1,0 +1,29 @@
+# EditorConfig — https://editorconfig.org
+# Applies in the editor, before any formatter runs, and covers file types
+# formatters ignore (Makefiles, .env, YAML). Charset and line endings are set
+# here because Biome/Ruff do not manage them. See /root/projects/STANDARDS.md
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{py,pyi}]
+indent_size = 4
+
+[*.go]
+indent_style = tab
+
+# Trailing whitespace is significant in Markdown (two spaces = hard line break)
+[*.md]
+trim_trailing_whitespace = false
+
+[{Makefile,*.mk}]
+indent_style = tab
+
+[*.{sh,bash}]
+indent_size = 2
