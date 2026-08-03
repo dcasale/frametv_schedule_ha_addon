@@ -19,7 +19,7 @@ repos:
         language: system
         pass_filenames: false
   # Python lint + format. Replaces flake8 + black + isort + pyupgrade.
-  # See /root/projects/STANDARDS.md
+  # See /root/projects/STYLE_GUIDE.md
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.1
     hooks:

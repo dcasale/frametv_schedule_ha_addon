@@ -1,7 +1,7 @@
 # EditorConfig — https://editorconfig.org
 # Applies in the editor, before any formatter runs, and covers file types
 # formatters ignore (Makefiles, .env, YAML). Charset and line endings are set
-# here because Biome/Ruff do not manage them. See /root/projects/STANDARDS.md
+# here because Biome/Ruff do not manage them. See /root/projects/STYLE_GUIDE.md
 root = true
 
 [*]
