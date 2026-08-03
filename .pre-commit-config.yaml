@@ -1,0 +1,20 @@
+# Local commit guard, via the standard `pre-commit` framework
+# (https://pre-commit.com). Uses the system gitleaks binary
+# (language: system) so `pre-commit install-hooks` needs no network.
+#
+# WHY LOCAL AND NOT JUST CI: `gitleaks protect --staged` runs BEFORE the commit
+# exists, so a secret never enters history. A CI scan runs after the fact — by
+# then the value is already committed, and git history is permanent, so the
+# secret must be rotated even if the commit is never pushed. CI is the backstop;
+# this hook is the actual control. It also works for repos with no remote and
+# no pipeline at all.
+#
+# Install after cloning: pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scan of staged changes)
+        entry: gitleaks protect --staged --no-banner --redact
+        language: system
+        pass_filenames: false
