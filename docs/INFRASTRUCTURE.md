@@ -63,4 +63,4 @@ holds the helpers.
 
 - Internal shape: `docs/ARCHITECTURE.md`
 - User setup: `frame_tv_schedule/DOCS.md`
-- Vault memory: `memory-bank/projects/project_frametv.md`
+- Vault memory: `memory-bank/projects/tv-schedule-ha-addon/project_frametv.md`

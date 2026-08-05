@@ -75,4 +75,4 @@ The Samsung pairing token persists at `/config/samsung-frame-token.txt`
 - User setup: `frame_tv_schedule/DOCS.md`
 - Deploy/distribution: `docs/INFRASTRUCTURE.md`
 - Open work: `BACKLOG.md`
-- Vault memory: `memory-bank/projects/project_frametv.md`
+- Vault memory: `memory-bank/projects/tv-schedule-ha-addon/project_frametv.md`
