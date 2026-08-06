@@ -1,5 +1,7 @@
 # Frame TV Schedule Home Assistant Add-on
 
+<!-- agentdocs:audience external -->
+
 Frame TV Schedule generates a daily calendar artwork image from Home Assistant calendar entities and displays it on a Samsung Frame TV during configured time windows.
 
 The first goal is a reliable schedule image pipeline:

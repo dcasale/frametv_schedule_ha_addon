@@ -1,5 +1,7 @@
 # Frame TV Schedule
 
+<!-- agentdocs:audience external -->
+
 This add-on creates a daily schedule image from Home Assistant calendar entities and can display it on a Samsung Frame TV during configured time windows.
 
 ## Calendar setup
