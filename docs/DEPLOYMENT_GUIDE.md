@@ -9,6 +9,12 @@ Where it runs is `docs/INFRASTRUCTURE.md`. This is the runbook.
 
 As-built 2026-08-02.
 
+## Deployment reality
+
+This project does **not** deploy to any VM in this lab — it installs into a Home
+Assistant instance from the `dcasale` add-on repository. There is no CI here.
+The live install target is not yet pinned; see `docs/INFRASTRUCTURE.md`.
+
 ## Release checklist
 
 1. **Run the tests.** Every module has a colocated `*_test.py`; run them before

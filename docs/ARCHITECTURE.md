@@ -32,6 +32,15 @@ HA weather entity    ──▶            │
 
 Every module has a colocated `*_test.py`.
 
+## Layout
+
+- `frame_tv_schedule/` — the add-on itself (`config.yaml`, `Dockerfile`,
+  `run.sh`, `app/`)
+- `frame_tv_schedule/app/` — the Python application; each module has a
+  colocated `*_test.py`
+- `repository.yaml` — the HA add-on repository manifest
+- `scripts/` — local dev helpers
+
 ## Key decisions
 
 - **The TV layer is isolated in `frame_client.py`.** Frame Art Mode upload and

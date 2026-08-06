@@ -21,6 +21,8 @@ frame_tv_schedule/CHANGELOG.md    release history
 docs/BACKLOG.md                   open work
 ```
 
+Unlike every other project in this workspace, this one deploys to **no VM** and has **no CI** — it installs into a Home Assistant instance from the `dcasale` add-on repository; see `docs/DEPLOYMENT_GUIDE.md`.
+
 > **⚠️ `docs/VISION.md` was drafted by an agent on 2026-08-02 and has not been
 > reviewed.** The product shape came straight from `config.yaml` and the add-on
 > source, but the goals are inference. It ends with two open questions (whether
@@ -28,15 +30,6 @@ docs/BACKLOG.md                   open work
 > `docs/` should hold written documentation or defer to `DOCS.md`).
 > **Next time you work on this project, settle those with Danny, correct the
 > file, and delete its banner.**
-
-## Layout
-
-- `frame_tv_schedule/` — the add-on itself (`config.yaml`, `Dockerfile`,
-  `run.sh`, `app/`)
-- `frame_tv_schedule/app/` — the Python application; each module has a
-  colocated `*_test.py`
-- `repository.yaml` — the HA add-on repository manifest
-- `scripts/` — local dev helpers
 
 ## Rules
 
@@ -52,9 +45,3 @@ docs/BACKLOG.md                   open work
 - `home_assistant_token` is a secret (`password?` in the schema) — never log it,
   never commit a filled-in `options`.
 - Tests live next to the code. Run them before bumping a version.
-
-## Deployment reality
-
-This project does **not** deploy to any VM in this lab — it installs into a Home
-Assistant instance from the `dcasale` add-on repository. There is no CI here.
-The live install target is not yet pinned; see `docs/INFRASTRUCTURE.md`.
