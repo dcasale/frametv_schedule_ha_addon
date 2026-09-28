@@ -41,7 +41,7 @@ public repo; do not remove it.
 
 ## Authoritative copies
 
-Vaultwarden at https://192.168.100.50 for the maintainer PAT. User secrets have
+Vaultwarden at https://192.168.20.14 for the maintainer PAT. User secrets have
 no authoritative copy here by design — they belong to the user.
 
 ## Rotation
