@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.27
+
+- Security update: upgrade Pillow (12.3.0), aiohttp (3.14.3) and FastAPI/Starlette (0.141.1 / 1.7.0) to fix published vulnerabilities, several of them in image and upload handling. Update is recommended, especially if port 8099 is reachable from your network.
+- No configuration changes and no change in behaviour.
+
 ## 0.2.26
 
 - Remove default display-window times from the add-on options and app config so blank schedule windows stay disabled after restart.
