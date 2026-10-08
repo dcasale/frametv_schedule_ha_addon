@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import logging
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime
 from html import escape
-import logging
 from pathlib import Path
-import re
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import File, Form, HTTPException, Request, UploadFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 
 from .art_library import ArtLibrary
 from .art_window_manager import ArtWindowManager, generated_today
@@ -47,7 +52,12 @@ async def lifespan(_: FastAPI):
         [window.model_dump() for window in config.display_windows],
         [window.model_dump() for window in config.weekend_display_windows],
     )
-    scheduler.add_job(tick, "interval", minutes=max(config.refresh_minutes, 1), next_run_time=datetime.now(ZoneInfo(config.timezone)))
+    scheduler.add_job(
+        tick,
+        "interval",
+        minutes=max(config.refresh_minutes, 1),
+        next_run_time=datetime.now(ZoneInfo(config.timezone)),
+    )
     for boundary in window_manager.schedule_boundary_times():
         scheduler.add_job(tick, "cron", hour=boundary.hour, minute=boundary.minute)
     scheduler.start()
@@ -104,8 +114,12 @@ async def art_page() -> HTMLResponse:
 @app.get("/tv-art")
 async def tv_art_page() -> HTMLResponse:
     state = state_store.read()
-    tv_art_options = render_tv_art_options(state.get("tv_art_items", []), selected_artwork_tv_id(state))
-    tv_art_grid = render_tv_art_grid(state.get("tv_art_items", []), selected_artwork_tv_id(state))
+    tv_art_options = render_tv_art_options(
+        state.get("tv_art_items", []), selected_artwork_tv_id(state)
+    )
+    tv_art_grid = render_tv_art_grid(
+        state.get("tv_art_items", []), selected_artwork_tv_id(state)
+    )
     body = f"""
     <!doctype html>
     <html>
@@ -255,7 +269,10 @@ async def push_fallback_route(request: Request) -> Response:
 
 
 @app.post("/upload-art", response_model=None)
-async def upload_art_route(request: Request, art_file: UploadFile = File(...)) -> Response:
+async def upload_art_route(
+    request: Request,
+    art_file: UploadFile = File(...),  # noqa: B008 - FastAPI idiom
+) -> Response:
     result = await run_ui_action(lambda: upload_art(art_file))
     if wants_json(request):
         return JSONResponse(result)
@@ -271,7 +288,9 @@ async def push_art_route(request: Request, art_name: str = Form(...)) -> Respons
 
 
 @app.post("/set-fallback-art", response_model=None)
-async def set_fallback_art_route(request: Request, art_name: str = Form(...)) -> Response:
+async def set_fallback_art_route(
+    request: Request, art_name: str = Form(...)
+) -> Response:
     result = await run_ui_action(lambda: set_fallback_art(art_name))
     if wants_json(request):
         return JSONResponse(result)
@@ -303,7 +322,9 @@ async def push_tv_art_route(request: Request, art_id: str = Form(...)) -> Respon
 
 
 @app.post("/set-fallback-tv-art", response_model=None)
-async def set_fallback_tv_art_route(request: Request, art_id: str = Form(...)) -> Response:
+async def set_fallback_tv_art_route(
+    request: Request, art_id: str = Form(...)
+) -> Response:
     result = await run_ui_action(lambda: set_fallback_tv_art(art_id))
     if wants_json(request):
         return JSONResponse(result)
@@ -353,8 +374,15 @@ async def generate_schedule() -> Path:
     events = await calendar_client.get_events(config.calendar_entities, start, end)
     weather = await calendar_client.get_hourly_weather(config.weather_entity)
     path = renderer.render(events, weather=weather)
-    logger.info("generated schedule image at %s with %s event(s) and %s weather forecast(s)", path, len(events), len(weather))
-    weather_note = " Weather was skipped." if config.weather_entity and not weather else ""
+    logger.info(
+        "generated schedule image at %s with %s event(s) and %s weather forecast(s)",
+        path,
+        len(events),
+        len(weather),
+    )
+    weather_note = (
+        " Weather was skipped." if config.weather_entity and not weather else ""
+    )
     state_store.update(
         {
             "last_action": f"Generated schedule image with {len(events)} event(s) and {len(weather)} weather forecast(s).{weather_note}",
@@ -368,7 +396,11 @@ async def generate_schedule() -> Path:
 
 async def generate_schedule_action() -> dict[str, str]:
     path = await generate_schedule()
-    return {"action": "generate", "image": str(path), "message": "Generated schedule image."}
+    return {
+        "action": "generate",
+        "image": str(path),
+        "message": "Generated schedule image.",
+    }
 
 
 async def tick() -> dict[str, str]:
@@ -377,7 +409,11 @@ async def tick() -> dict[str, str]:
     except Exception as error:
         logger.exception("window check failed")
         message = f"{type(error).__name__}: {error}"
-        result = {"action": "error", "error": message, "message": f"Window check failed: {message}"}
+        result = {
+            "action": "error",
+            "error": message,
+            "message": f"Window check failed: {message}",
+        }
         state_store.update(action_status(result["message"], "error", result))
         return result
 
@@ -387,7 +423,10 @@ async def tick_impl() -> dict[str, str]:
     should_show = window_manager.should_show_schedule(now)
     at_window_start = window_manager.is_window_start(now)
     state = state_store.read()
-    active = bool(state.get("schedule_active")) and state.get("schedule_push_mode") == config.push_mode
+    active = (
+        bool(state.get("schedule_active"))
+        and state.get("schedule_push_mode") == config.push_mode
+    )
     current_schedule = generated_today(state, now, ZoneInfo(config.timezone))
     logger.info(
         "window check push_mode=%s should_show=%s active=%s current_schedule=%s at_window_start=%s stored_push_mode=%s tv_host=%s",
@@ -402,7 +441,10 @@ async def tick_impl() -> dict[str, str]:
 
     if should_show and (not active or at_window_start or not current_schedule):
         await push_schedule_to_frame("Window check", force_generate=True)
-        return {"action": "show_schedule", "message": "Generated and pushed schedule image for the active display window."}
+        return {
+            "action": "show_schedule",
+            "message": "Generated and pushed schedule image for the active display window.",
+        }
 
     if not should_show and active:
         result = await show_window_fallback_image()
@@ -414,17 +456,32 @@ async def tick_impl() -> dict[str, str]:
             }
         )
         logger.info("window check showed artwork")
-        return {"action": "show_artwork", "message": "Showed Artwork after the schedule window."}
+        return {
+            "action": "show_artwork",
+            "message": "Showed Artwork after the schedule window.",
+        }
 
-    state_store.update({"last_action": "Window check completed. No display change was needed."})
+    state_store.update(
+        {"last_action": "Window check completed. No display change was needed."}
+    )
     logger.info("window check completed with no display change")
-    return {"action": "no_change", "message": "Window check completed. No display change was needed."}
+    return {
+        "action": "no_change",
+        "message": "Window check completed. No display change was needed.",
+    }
 
 
 async def push_calendar_image() -> dict[str, str]:
-    logger.info("push calendar requested push_mode=%s tv_host=%s", config.push_mode, config.tv_host or "(not set)")
+    logger.info(
+        "push calendar requested push_mode=%s tv_host=%s",
+        config.push_mode,
+        config.tv_host or "(not set)",
+    )
     await push_schedule_to_frame("Manual calendar push", force_generate=True)
-    return {"action": "show_schedule", "message": "Generated and pushed the calendar image."}
+    return {
+        "action": "show_schedule",
+        "message": "Generated and pushed the calendar image.",
+    }
 
 
 async def push_fallback_image() -> dict[str, str]:
@@ -449,14 +506,22 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
     if artwork_tv_art_id:
         logger.info("push artwork requested from TV art id=%s", artwork_tv_art_id)
         await frame_client.select_art(artwork_tv_art_id)
-        return {"action": "push_artwork", "art_id": artwork_tv_art_id, "message": f"Pushed Artwork TV art {artwork_tv_art_id}."}
+        return {
+            "action": "push_artwork",
+            "art_id": artwork_tv_art_id,
+            "message": f"Pushed Artwork TV art {artwork_tv_art_id}.",
+        }
 
     artwork_art_file = selected_artwork_file(state)
     if artwork_art_file:
         path = art_library.get(artwork_art_file)
         logger.info("push artwork requested from art library path=%s", path)
         await frame_client.show_image(path, label=f"artwork_{path.stem}")
-        return {"action": "push_artwork", "image": path.name, "message": f"Pushed Artwork {path.name} to the Frame TV."}
+        return {
+            "action": "push_artwork",
+            "image": path.name,
+            "message": f"Pushed Artwork {path.name} to the Frame TV.",
+        }
 
     message = "No Artwork is configured."
     if allow_empty:
@@ -468,7 +533,11 @@ async def upload_art(art_file: UploadFile) -> dict[str, str]:
     path = await art_library.save_upload(art_file)
     state_store.update({"last_action": f"Uploaded art image {path.name}."})
     logger.info("uploaded art library image path=%s", path)
-    return {"action": "upload_art", "image": path.name, "message": f"Uploaded art image {path.name}."}
+    return {
+        "action": "upload_art",
+        "image": path.name,
+        "message": f"Uploaded art image {path.name}.",
+    }
 
 
 async def push_library_art(art_name: str) -> dict[str, str]:
@@ -482,7 +551,11 @@ async def push_library_art(art_name: str) -> dict[str, str]:
             "schedule_push_mode": config.push_mode,
         }
     )
-    return {"action": "push_art", "image": path.name, "message": f"Pushed selected art {path.name} to the Frame TV."}
+    return {
+        "action": "push_art",
+        "image": path.name,
+        "message": f"Pushed selected art {path.name} to the Frame TV.",
+    }
 
 
 async def set_fallback_art(art_name: str) -> dict[str, str]:
@@ -497,7 +570,11 @@ async def set_fallback_art(art_name: str) -> dict[str, str]:
         }
     )
     logger.info("artwork set to path=%s", path)
-    return {"action": "set_artwork", "image": path.name, "message": f"Set Artwork to {path.name}."}
+    return {
+        "action": "set_artwork",
+        "image": path.name,
+        "message": f"Set Artwork to {path.name}.",
+    }
 
 
 async def delete_library_art(art_name: str) -> dict[str, str]:
@@ -509,7 +586,11 @@ async def delete_library_art(art_name: str) -> dict[str, str]:
         update["fallback_art_file"] = ""
     state_store.update(update)
     logger.info("deleted art library image path=%s", path)
-    return {"action": "delete_art", "image": path.name, "message": f"Deleted add-on art {path.name}."}
+    return {
+        "action": "delete_art",
+        "image": path.name,
+        "message": f"Deleted add-on art {path.name}.",
+    }
 
 
 async def refresh_tv_art() -> dict[str, str]:
@@ -521,7 +602,11 @@ async def refresh_tv_art() -> dict[str, str]:
             "tv_art_items": cached_items,
         }
     )
-    return {"action": "refresh_tv_art", "count": str(len(cached_items)), "message": f"Loaded {len(cached_items)} art item(s) from the Frame TV."}
+    return {
+        "action": "refresh_tv_art",
+        "count": str(len(cached_items)),
+        "message": f"Loaded {len(cached_items)} art item(s) from the Frame TV.",
+    }
 
 
 async def push_tv_art(art_id: str) -> dict[str, str]:
@@ -533,7 +618,11 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
             "schedule_push_mode": config.push_mode,
         }
     )
-    return {"action": "push_tv_art", "art_id": art_id, "message": f"Pushed TV art {art_id}."}
+    return {
+        "action": "push_tv_art",
+        "art_id": art_id,
+        "message": f"Pushed TV art {art_id}.",
+    }
 
 
 async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
@@ -546,14 +635,21 @@ async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
             "fallback_art_file": "",
         }
     )
-    return {"action": "set_artwork", "art_id": art_id, "message": f"Set Artwork to TV art {art_id}."}
+    return {
+        "action": "set_artwork",
+        "art_id": art_id,
+        "message": f"Set Artwork to TV art {art_id}.",
+    }
 
 
 async def delete_tv_art(art_id: str) -> dict[str, str]:
     await frame_client.delete_art(art_id)
     state = state_store.read()
     items = remove_tv_art_item(state.get("tv_art_items", []), art_id)
-    update: dict[str, Any] = {"last_action": f"Deleted TV art {art_id}.", "tv_art_items": items}
+    update: dict[str, Any] = {
+        "last_action": f"Deleted TV art {art_id}.",
+        "tv_art_items": items,
+    }
     if selected_artwork_tv_id(state) == art_id:
         update["artwork_tv_art_id"] = ""
         update["fallback_tv_art_id"] = ""
@@ -562,7 +658,11 @@ async def delete_tv_art(art_id: str) -> dict[str, str]:
         update["current_tv_art"] = {}
     delete_existing_thumbnail(art_id)
     state_store.update(update)
-    return {"action": "delete_tv_art", "art_id": art_id, "message": f"Deleted TV art {art_id}."}
+    return {
+        "action": "delete_tv_art",
+        "art_id": art_id,
+        "message": f"Deleted TV art {art_id}.",
+    }
 
 
 async def refresh_current_tv() -> dict[str, str]:
@@ -575,23 +675,35 @@ async def refresh_current_tv() -> dict[str, str]:
     }
     state_store.update({"current_tv_art": current})
     art_label = item.art_id or item.title or "current TV art"
-    return {"action": "refresh_current_tv", "art_id": item.art_id, "message": f"Loaded current TV image: {art_label}."}
+    return {
+        "action": "refresh_current_tv",
+        "art_id": item.art_id,
+        "message": f"Loaded current TV image: {art_label}.",
+    }
 
 
 async def calendar_debug() -> dict[str, str]:
     start, end = window_manager.today_bounds()
-    result = await calendar_client.debug_calendar_fetch(config.calendar_entities, start, end)
-    state_store.update({"last_action": "Calendar debug completed.", "calendar_debug": result})
+    result = await calendar_client.debug_calendar_fetch(
+        config.calendar_entities, start, end
+    )
+    state_store.update(
+        {"last_action": "Calendar debug completed.", "calendar_debug": result}
+    )
     return {"action": "calendar_debug", "message": "Calendar debug completed."}
 
 
 async def weather_debug() -> dict[str, str]:
     result = await calendar_client.debug_weather_fetch(config.weather_entity)
-    state_store.update({"last_action": "Weather debug completed.", "weather_debug": result})
+    state_store.update(
+        {"last_action": "Weather debug completed.", "weather_debug": result}
+    )
     return {"action": "weather_debug", "message": "Weather debug completed."}
 
 
-async def push_schedule_to_frame(action_label: str, force_generate: bool = False) -> None:
+async def push_schedule_to_frame(
+    action_label: str, force_generate: bool = False
+) -> None:
     await ensure_current_schedule_image(force=force_generate)
     state_store.update(
         {
@@ -608,22 +720,38 @@ async def push_schedule_to_frame(action_label: str, force_generate: bool = False
             "schedule_push_mode": config.push_mode,
         }
     )
-    logger.info("%s showed schedule using push_mode=%s", action_label.lower(), config.push_mode)
+    logger.info(
+        "%s showed schedule using push_mode=%s", action_label.lower(), config.push_mode
+    )
 
 
 async def ensure_current_schedule_image(force: bool = False) -> None:
     now = datetime.now(ZoneInfo(config.timezone))
     state = state_store.read()
-    if force or not renderer.output_path.exists() or not generated_today(state, now, ZoneInfo(config.timezone)):
+    if (
+        force
+        or not renderer.output_path.exists()
+        or not generated_today(state, now, ZoneInfo(config.timezone))
+    ):
         await generate_schedule()
 
 
 async def run_ui_action(action: Any) -> dict[str, Any]:
     try:
         result = await action()
-        message = str(result.get("message", "Action completed.")) if isinstance(result, dict) else "Action completed."
-        status = "error" if isinstance(result, dict) and result.get("action") == "error" else "success"
-        state_store.update(action_status(message, status, result if isinstance(result, dict) else {}))
+        message = (
+            str(result.get("message", "Action completed."))
+            if isinstance(result, dict)
+            else "Action completed."
+        )
+        status = (
+            "error"
+            if isinstance(result, dict) and result.get("action") == "error"
+            else "success"
+        )
+        state_store.update(
+            action_status(message, status, result if isinstance(result, dict) else {})
+        )
         return result
     except Exception as error:
         logger.exception("web UI action failed")
@@ -652,7 +780,9 @@ def selected_artwork_file(state: dict[str, Any]) -> str:
 
 
 def selected_artwork_tv_id(state: dict[str, Any]) -> str:
-    return str(state.get("artwork_tv_art_id", "") or state.get("fallback_tv_art_id", ""))
+    return str(
+        state.get("artwork_tv_art_id", "") or state.get("fallback_tv_art_id", "")
+    )
 
 
 def render_art_options(paths: list[Path], selected_name: str = "") -> str:
@@ -679,13 +809,15 @@ def render_tv_art_options(items: Any, selected_art_id: str = "") -> str:
             continue
         title = str(item.get("title", "")) or art_id
         selected = " selected" if art_id == selected_art_id else ""
-        options.append(f'<option value="{escape(art_id)}"{selected}>{escape(title)} ({escape(art_id)})</option>')
+        options.append(
+            f'<option value="{escape(art_id)}"{selected}>{escape(title)} ({escape(art_id)})</option>'
+        )
     return "\n".join(options) or '<option value="">Refresh TV art first</option>'
 
 
 def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
     if not paths:
-        return '<p>No add-on art uploaded yet.</p>'
+        return "<p>No add-on art uploaded yet.</p>"
     cards = []
     for path in paths:
         selected = " selected" if path.name == selected_name else ""
@@ -716,7 +848,7 @@ def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
 
 def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
     if not isinstance(items, list) or not items:
-        return '<p>No TV art loaded yet.</p>'
+        return "<p>No TV art loaded yet.</p>"
     cards = []
     for item in items:
         if not isinstance(item, dict):
@@ -753,7 +885,7 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
             </article>
             """
         )
-    return "\n".join(cards) or '<p>No TV art loaded yet.</p>'
+    return "\n".join(cards) or "<p>No TV art loaded yet.</p>"
 
 
 def render_current_tv_art(current: Any, tv_art_items: Any) -> str:
@@ -808,7 +940,11 @@ def remove_tv_art_item(items: Any, art_id: str) -> list[dict[str, str]]:
 
 async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
     art_items = [item.__dict__ for item in items]
-    missing_ids = [item["art_id"] for item in art_items if not existing_thumbnail_name(item["art_id"])]
+    missing_ids = [
+        item["art_id"]
+        for item in art_items
+        if not existing_thumbnail_name(item["art_id"])
+    ]
     thumbnails = await frame_client.fetch_art_thumbnails(missing_ids)
     for art_id, data in thumbnails.items():
         write_thumbnail(art_id, data)
@@ -885,7 +1021,7 @@ def schedule_page() -> HTMLResponse:
           <form method="post" action="./push-fallback"><button>Push Artwork</button></form>
         </div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
-        {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ''}
+        {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ""}
       </body>
     </html>
     """
@@ -936,18 +1072,27 @@ def nav(active: str) -> str:
         ("tv-art", "./tv-art", "TV Art"),
         ("diagnostics", "./diagnostics", "Diagnostics"),
     ]
-    return "<nav>" + "".join(
-        f'<a class="{"active" if key == active else ""}" href="{href}">{label}</a>' for key, href, label in links
-    ) + "</nav>"
+    return (
+        "<nav>"
+        + "".join(
+            f'<a class="{"active" if key == active else ""}" href="{href}">{label}</a>'
+            for key, href, label in links
+        )
+        + "</nav>"
+    )
 
 
 def render_status(state: dict[str, Any]) -> str:
     message = str(state.get("last_action", "Ready"))
-    status_class = str(state.get("last_action_status", "")) or ("error" if message.startswith("Action failed:") else "success")
+    status_class = str(state.get("last_action_status", "")) or (
+        "error" if message.startswith("Action failed:") else "success"
+    )
     if status_class not in {"success", "error"}:
         status_class = "success"
     timestamp = str(state.get("last_action_time", ""))
-    time_html = f'<div class="status-time">{escape(timestamp)}</div>' if timestamp else ""
+    time_html = (
+        f'<div class="status-time">{escape(timestamp)}</div>' if timestamp else ""
+    )
     return f'<div class="status {status_class}">{escape(message)}{time_html}</div>'
 
 

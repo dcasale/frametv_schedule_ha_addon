@@ -38,15 +38,27 @@ class FrameClient:
 
     async def show_image(self, image_path: Path, label: str = "image") -> None:
         if self.config.push_mode == "dry_run":
-            logger.info("dry run: would show %s %s on %s", label, image_path, self.config.tv_name)
+            logger.info(
+                "dry run: would show %s %s on %s",
+                label,
+                image_path,
+                self.config.tv_name,
+            )
             return
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("showing %s on Samsung Frame host=%s image=%s", label, self.config.tv_host, image_path)
+            logger.info(
+                "showing %s on Samsung Frame host=%s image=%s",
+                label,
+                self.config.tv_host,
+                image_path,
+            )
             await self._run_local_operation(self._show_image_sync, image_path, label)
             return
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def list_available_art(self) -> list[TvArtItem]:
         if self.config.push_mode == "dry_run":
@@ -57,7 +69,9 @@ class FrameClient:
             logger.info("listing Samsung Frame art host=%s", self.config.tv_host)
             return await self._run_local_operation(self._list_available_art_sync)
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def current_art(self) -> TvArtItem:
         if self.config.push_mode == "dry_run":
@@ -65,10 +79,14 @@ class FrameClient:
             return TvArtItem(art_id="", title="Dry run")
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("reading current Samsung Frame art host=%s", self.config.tv_host)
+            logger.info(
+                "reading current Samsung Frame art host=%s", self.config.tv_host
+            )
             return await self._run_local_operation(self._current_art_sync)
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def select_art(self, art_id: str) -> None:
         if self.config.push_mode == "dry_run":
@@ -76,11 +94,17 @@ class FrameClient:
             return
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("selecting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
+            logger.info(
+                "selecting Samsung Frame art host=%s art_id=%s",
+                self.config.tv_host,
+                art_id,
+            )
             await self._run_local_operation(self._select_art_sync, art_id)
             return
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def delete_art(self, art_id: str) -> None:
         if self.config.push_mode == "dry_run":
@@ -88,11 +112,17 @@ class FrameClient:
             return
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("deleting Samsung Frame art host=%s art_id=%s", self.config.tv_host, art_id)
+            logger.info(
+                "deleting Samsung Frame art host=%s art_id=%s",
+                self.config.tv_host,
+                art_id,
+            )
             await self._run_local_operation(self._delete_art_sync, art_id)
             return
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def fetch_art_thumbnails(self, art_ids: list[str]) -> dict[str, bytes]:
         if self.config.push_mode == "dry_run":
@@ -100,17 +130,29 @@ class FrameClient:
             return {}
 
         if self.config.push_mode == "local_frame_api":
-            logger.info("fetching %s Samsung Frame thumbnail(s) host=%s", len(art_ids), self.config.tv_host)
-            return await self._run_local_operation(self._fetch_art_thumbnails_sync, art_ids)
+            logger.info(
+                "fetching %s Samsung Frame thumbnail(s) host=%s",
+                len(art_ids),
+                self.config.tv_host,
+            )
+            return await self._run_local_operation(
+                self._fetch_art_thumbnails_sync, art_ids
+            )
 
-        raise NotImplementedError(f"push_mode={self.config.push_mode} is not implemented yet")
+        raise NotImplementedError(
+            f"push_mode={self.config.push_mode} is not implemented yet"
+        )
 
     async def _run_local_operation(self, func: Any, *args: Any) -> Any:
         timeout = max(60, int(self.config.tv_timeout_seconds) * 6)
         try:
-            return await asyncio.wait_for(asyncio.to_thread(func, *args), timeout=timeout)
+            return await asyncio.wait_for(
+                asyncio.to_thread(func, *args), timeout=timeout
+            )
         except TimeoutError as error:
-            raise RuntimeError(f"Samsung Frame operation timed out after {timeout} seconds") from error
+            raise RuntimeError(
+                f"Samsung Frame operation timed out after {timeout} seconds"
+            ) from error
 
     def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
         upload = self._ensure_uploaded_image(image_path, label)
@@ -137,7 +179,11 @@ class FrameClient:
             ensure_art_supported(art)
             payload = current_art_payload(art)
         item = current_art_item(payload)
-        logger.info("current Samsung Frame art id=%s title=%s", item.art_id or "(unknown)", item.title or "(none)")
+        logger.info(
+            "current Samsung Frame art id=%s title=%s",
+            item.art_id or "(unknown)",
+            item.title or "(none)",
+        )
         return item
 
     def _select_art_sync(self, art_id: str) -> None:
@@ -157,7 +203,9 @@ class FrameClient:
             ensure_art_supported(art)
             deleted = art.delete(art_id)
         if deleted is False:
-            raise RuntimeError(f"Samsung Frame did not confirm deletion for art id={art_id}")
+            raise RuntimeError(
+                f"Samsung Frame did not confirm deletion for art id={art_id}"
+            )
         logger.info("deleted Samsung Frame art id=%s", art_id)
 
     def _fetch_art_thumbnails_sync(self, art_ids: list[str]) -> dict[str, bytes]:
@@ -175,24 +223,33 @@ class FrameClient:
                     try:
                         payload = thumbnail_list(art_id)
                     except Exception:
-                        logger.exception("failed to fetch Samsung Frame thumbnail list art_id=%s", art_id)
+                        logger.exception(
+                            "failed to fetch Samsung Frame thumbnail list art_id=%s",
+                            art_id,
+                        )
                 if not payload:
                     try:
                         payload = art.get_thumbnail(art_id, as_dict=True)
                     except Exception:
-                        logger.exception("failed to fetch Samsung Frame thumbnail art_id=%s", art_id)
+                        logger.exception(
+                            "failed to fetch Samsung Frame thumbnail art_id=%s", art_id
+                        )
                         continue
                 data = thumbnail_bytes(payload, art_id)
                 if data:
                     thumbnails[art_id] = data
 
-        logger.info("fetched %s/%s Samsung Frame thumbnail(s)", len(thumbnails), len(art_ids))
+        logger.info(
+            "fetched %s/%s Samsung Frame thumbnail(s)", len(thumbnails), len(art_ids)
+        )
         return thumbnails
 
     def _ensure_uploaded_schedule(self, image_path: Path) -> str:
         return self._ensure_uploaded_image(image_path, "schedule").art_id
 
-    def _ensure_uploaded_image(self, image_path: Path, label: str) -> UploadedFrameImage:
+    def _ensure_uploaded_image(
+        self, image_path: Path, label: str
+    ) -> UploadedFrameImage:
         image_hash = file_sha256(image_path)
         state = self._read_state()
         sha_key = f"{label}_image_sha256"
@@ -203,7 +260,12 @@ class FrameClient:
             if label == "schedule":
                 tracked_ids = schedule_art_ids(state, current_art_id=content_id)
                 self._write_state({**state, "schedule_art_ids": tracked_ids})
-                return UploadedFrameImage(content_id, stale_schedule_art_ids=tuple(art_id for art_id in tracked_ids if art_id != content_id))
+                return UploadedFrameImage(
+                    content_id,
+                    stale_schedule_art_ids=tuple(
+                        art_id for art_id in tracked_ids if art_id != content_id
+                    ),
+                )
             return UploadedFrameImage(content_id)
 
         content_id = self._upload_image(image_path)
@@ -212,12 +274,18 @@ class FrameClient:
         stale_schedule_art_ids: tuple[str, ...] = ()
         if label == "schedule":
             tracked_ids = schedule_art_ids(state, current_art_id=content_id)
-            stale_schedule_art_ids = tuple(art_id for art_id in tracked_ids if art_id != content_id)
+            stale_schedule_art_ids = tuple(
+                art_id for art_id in tracked_ids if art_id != content_id
+            )
             next_state["schedule_art_ids"] = tracked_ids
         self._write_state(next_state)
-        return UploadedFrameImage(content_id, stale_schedule_art_ids=stale_schedule_art_ids)
+        return UploadedFrameImage(
+            content_id, stale_schedule_art_ids=stale_schedule_art_ids
+        )
 
-    def _purge_stale_schedule_art(self, current_art_id: str, stale_art_ids: tuple[str, ...]) -> None:
+    def _purge_stale_schedule_art(
+        self, current_art_id: str, stale_art_ids: tuple[str, ...]
+    ) -> None:
         failed: list[str] = []
         for art_id in stale_art_ids:
             try:
@@ -228,14 +296,21 @@ class FrameClient:
 
         state = self._read_state()
         state["schedule_art_id"] = current_art_id
-        state["schedule_art_ids"] = schedule_art_ids({"schedule_art_ids": [current_art_id, *failed]}, current_art_id=current_art_id)
+        state["schedule_art_ids"] = schedule_art_ids(
+            {"schedule_art_ids": [current_art_id, *failed]},
+            current_art_id=current_art_id,
+        )
         self._write_state(state)
 
     def _upload_image(self, image_path: Path) -> str:
         if not image_path.exists():
             raise FileNotFoundError(f"Frame image does not exist: {image_path}")
 
-        logger.info("uploading image to Samsung Frame host=%s path=%s", self.config.tv_host, image_path)
+        logger.info(
+            "uploading image to Samsung Frame host=%s path=%s",
+            self.config.tv_host,
+            image_path,
+        )
         with self._tv() as tv:
             art = tv.art()
             ensure_art_supported(art)
@@ -253,7 +328,9 @@ class FrameClient:
                     content_id = created[-1]
 
         if not content_id:
-            raise RuntimeError("Samsung Frame upload succeeded but no content ID was returned or detected")
+            raise RuntimeError(
+                "Samsung Frame upload succeeded but no content ID was returned or detected"
+            )
 
         return content_id
 
@@ -265,7 +342,7 @@ class FrameClient:
     def _write_state(self, state: dict[str, Any]) -> None:
         self.state_path.write_text(json.dumps(state, indent=2, sort_keys=True))
 
-    def _tv(self) -> "SamsungTvContext":
+    def _tv(self) -> SamsungTvContext:
         if not self.config.tv_host:
             raise RuntimeError("tv_host is required when push_mode is local_frame_api")
 
@@ -326,7 +403,9 @@ def schedule_art_ids(state: dict[str, Any], current_art_id: str = "") -> list[st
 
 def available_content_ids(payload: Any) -> set[str]:
     if isinstance(payload, dict):
-        values = payload.get("items") or payload.get("content") or payload.get("data") or []
+        values = (
+            payload.get("items") or payload.get("content") or payload.get("data") or []
+        )
     else:
         values = payload
 
@@ -350,7 +429,9 @@ def available_art_items(payload: Any) -> list[TvArtItem]:
 
 
 def current_art_item(payload: Any) -> TvArtItem:
-    return TvArtItem(art_id=extract_content_id(payload), title=extract_art_title(payload))
+    return TvArtItem(
+        art_id=extract_content_id(payload), title=extract_art_title(payload)
+    )
 
 
 def current_art_payload(art: Any) -> Any:
@@ -363,7 +444,13 @@ def current_art_payload(art: Any) -> Any:
 
 def art_payload_items(payload: Any) -> list[Any]:
     if isinstance(payload, dict):
-        values = payload.get("items") or payload.get("content") or payload.get("data") or payload.get("available") or []
+        values = (
+            payload.get("items")
+            or payload.get("content")
+            or payload.get("data")
+            or payload.get("available")
+            or []
+        )
     else:
         values = payload
     return values if isinstance(values, list) else []
@@ -383,7 +470,14 @@ def dedupe_art_items(items: list[TvArtItem]) -> list[TvArtItem]:
 def extract_art_title(payload: Any) -> str:
     if not isinstance(payload, dict):
         return ""
-    for key in ("title", "name", "file_name", "fileName", "content_name", "contentName"):
+    for key in (
+        "title",
+        "name",
+        "file_name",
+        "fileName",
+        "content_name",
+        "contentName",
+    ):
         value = payload.get(key)
         if isinstance(value, str) and value:
             return value
