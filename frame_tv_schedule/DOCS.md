@@ -119,19 +119,21 @@ When a manual token is configured, the add-on uses that token instead of `SUPERV
 
 ## Art library
 
+Every button in the web UI explains itself when you hover over it, and each action's status message says what changed on the TV and for how long.
+
 Use the **Art Library** section in the web UI to upload images into the add-on. You can select several pictures at once in the file picker. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size. JPEG and PNG work; HEIC files (the iPhone default when copied off a Mac) are rejected, so export them as JPEG first. Uploading from Safari on an iPhone converts them automatically. If some files in a batch fail, the rest are still saved and the status line names each failed file. There is no practical size limit on a batch; 20 phone photos upload in one go, and processing takes roughly a second per picture.
 
 After uploading art, use the dropdown or gallery cards to:
 
-- **Push Selected Art to TV** (or **Show on TV** on a card): show that image on the TV now. The add-on uploads it to the TV the first time and reuses that copy afterwards. Artwork is not changed, so the next window end still switches to Artwork.
-- **Use Selected Art as Artwork** (or **Set Artwork** on a card): make that image the Artwork used by **Push Artwork** and by automatic window-end switching.
-- **Delete**: remove that uploaded image from the add-on art library. If it was selected as Artwork, the Artwork selection is cleared.
+- **Preview Selected Art on TV** (or **Preview on TV** on a card): show that image on the TV for now. The add-on uploads it to the TV the first time and reuses that copy afterwards. A preview is temporary and does not change Artwork: it stays until the next display window starts (or, during an open window, until the next window check), and Artwork comes back when that window ends. While the schedule is paused it stays until you change it.
+- **Set Selected Art as Artwork** (or **Set Artwork** on a card): make that image the Artwork, the default the TV returns to after every schedule window. It does not change the TV right away; the gallery card marked **Artwork** is the current choice. This makes it the Artwork used by **Push Artwork** and by automatic window-end switching.
+- **Delete** (asks first): remove that uploaded image from the add-on art library. A copy already on the TV stays there. If it was selected as Artwork, the Artwork selection is cleared.
 
-This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as Artwork, and verify **Push Selected Art to TV** and **Push Artwork**.
+This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as Artwork, and verify **Preview Selected Art on TV** and **Push Artwork**.
 
 ## TV art
 
-The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can select an existing TV art item, push it to the TV, use it as the configured Artwork, or delete it from the TV. The add-on also tries to fetch and cache thumbnails under the add-on config directory.
+The **TV Art** page can refresh the list of artwork reported by the Samsung Frame TV. After refreshing, you can preview an existing TV art item, set it as the Artwork, or delete it from the TV (the add-on asks first, because this cannot be undone). The add-on also tries to fetch and cache thumbnails under the add-on config directory.
 
 This requires `push_mode: local_frame_api` and a working `tv_host`. The list and thumbnails come from the TV's local Art Mode API, so the exact titles, IDs, dates, and thumbnail availability depend on what your model and firmware return. The add-on uses the thumbnail-list API when the library provides it, and the legacy per-image thumbnail API only on TVs without it. Some items, such as Art Store content on newer firmware, refuse thumbnails; those show a placeholder and do not stop the list from refreshing. The TV's API returns thumbnails only, never the original full-resolution files, so **thumbnails are not a backup of your art**. Keep the originals elsewhere, or upload through the add-on's Art page, which keeps a 4K copy in the add-on config folder (included in Home Assistant backups). When art disappears from the TV, its cached thumbnail moves to `tv-art-thumbnails-removed/` rather than being deleted. If the Artwork you chose on this page is no longer on the TV, the add-on clears it and asks you to choose new Artwork. Pictures from the Add-on Art page don't have this problem: if their copy on the TV has gone, the add-on uploads them again.
 
@@ -260,7 +262,7 @@ After `dry_run` works:
 4. Save and restart the add-on.
 5. Open the add-on web UI and select **Push Calendar Image**.
 6. Watch the TV for a pairing prompt and approve it.
-7. Upload a normal art image in **Art Library**, select it, and choose **Use Selected Art as Artwork**.
+7. Upload a normal art image in **Art Library**, select it, and choose **Set Selected Art as Artwork**.
 8. Select **Push Artwork** to verify Artwork behavior.
 9. Temporarily set one display window to include the current time.
 10. Select **Run Window Check**.

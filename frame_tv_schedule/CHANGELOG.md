@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.33
+
+- Rename **Show on TV** to **Preview on TV** and **Push Selected Art to TV** to **Preview Selected Art on TV**, so it is clear the picture is shown only for now. **Use Selected Art as Artwork** becomes **Set Selected Art as Artwork** to match the card's **Set Artwork**.
+- Every button and tab explains itself on hover.
+- Status messages now say what happened and what comes next: how long a preview stays up (until the next display window, the next window check, or indefinitely while the schedule is paused), what Artwork the TV returns to, and that Set Artwork does not change the TV right away.
+- Deleting a picture asks for confirmation first, and the message says when that also cleared the Artwork.
+- The gallery card for the current Artwork is labelled **Artwork**.
+
 ## 0.2.32
 
 - Handle art that has disappeared from the TV (deleted, or the TV was reset) instead of failing with "`select_image` request failed with error number -10". The add-on re-reads the TV's art list to confirm the picture is really gone before acting:

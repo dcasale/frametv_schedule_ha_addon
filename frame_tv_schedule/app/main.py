@@ -92,19 +92,19 @@ async def art_page() -> HTMLResponse:
         {nav("art")}
         {render_status(state)}
         <h1>Art Library</h1>
-        <p>Upload one picture or select several at once. Each is saved as a 4K copy in the add-on config folder, which Home Assistant backups include.</p>
+        <p>Upload one picture or select several at once. Each is saved as a 4K copy in the add-on config folder, which Home Assistant backups include. <strong>Preview</strong> shows a picture on the TV for now; <strong>Set Artwork</strong> makes it the default the TV returns to after each schedule window. Hover over any button for details.</p>
         <div class="action-panel">
           <form method="post" action="./upload-art" enctype="multipart/form-data">
             <input type="file" name="art_file" accept="image/*" multiple required>
-            <button>Upload Art</button>
+            <button title="Add pictures to the add-on library as 4K copies. Nothing is sent to the TV yet.">Upload Art</button>
           </form>
           <form method="post" action="./push-art">
             <select name="art_name" required>{art_options}</select>
-            <button>Push Selected Art to TV</button>
+            <button title="Show this picture on the TV for now. It is temporary: the schedule replaces it at the next display window, and Artwork comes back after. Artwork is not changed.">Preview Selected Art on TV</button>
           </form>
           <form method="post" action="./set-fallback-art">
             <select name="art_name" required>{art_options}</select>
-            <button>Use Selected Art as Artwork</button>
+            <button title="Make this picture the Artwork: the default the TV returns to after every schedule window, and the one Push Artwork shows. The TV is not changed now.">Set Selected Art as Artwork</button>
           </form>
         </div>
         <div class="art-grid">{art_grid}</div>
@@ -134,16 +134,16 @@ async def tv_art_page() -> HTMLResponse:
         {nav("tv-art")}
         {render_status(state)}
         <h1>TV Art</h1>
-        <p>Refresh the list from the Samsung Frame TV, then select an existing TV art item to display or use as Artwork.</p>
+        <p>Pictures stored on the TV itself. <strong>Preview</strong> shows one for now; <strong>Set Artwork</strong> makes it the default the TV returns to after each schedule window. Hover over any button for details.</p>
         <div class="action-panel">
-          <form method="post" action="./refresh-tv-art"><span class="hint">Reload the list and thumbnails from the TV.</span><button>Refresh TV Art List</button></form>
+          <form method="post" action="./refresh-tv-art"><span class="hint">Reload the list and thumbnails from the TV.</span><button title="Read the current list of pictures from the TV and fetch any missing thumbnails. Nothing on the TV changes.">Refresh TV Art List</button></form>
           <form method="post" action="./push-tv-art">
             <select name="art_id" required>{tv_art_options}</select>
-            <button>Push Selected Art to TV</button>
+            <button title="Show this picture on the TV for now. It is temporary: the schedule replaces it at the next display window, and Artwork comes back after. Artwork is not changed.">Preview Selected Art on TV</button>
           </form>
           <form method="post" action="./set-fallback-tv-art">
             <select name="art_id" required>{tv_art_options}</select>
-            <button>Use Selected Art as Artwork</button>
+            <button title="Make this picture the Artwork: the default the TV returns to after every schedule window, and the one Push Artwork shows. The TV is not changed now.">Set Selected Art as Artwork</button>
           </form>
         </div>
         <div class="art-grid">{tv_art_grid}</div>
@@ -171,7 +171,7 @@ async def current_tv_page() -> HTMLResponse:
         <h1>Current TV Image</h1>
         <p>Refresh this page's TV status to see the current Samsung Frame art ID reported by the TV.</p>
         <div class="subnav">
-          <form method="post" action="./refresh-current-tv"><button>Refresh Current TV Image</button></form>
+          <form method="post" action="./refresh-current-tv"><button title="Ask the TV which picture it is showing right now. Nothing on the TV changes.">Refresh Current TV Image</button></form>
         </div>
         {current_html}
       </body>
@@ -195,9 +195,9 @@ async def diagnostics_page() -> HTMLResponse:
         {render_status(state)}
         <h1>Diagnostics</h1>
         <div class="subnav">
-          <form method="post" action="./tick"><button>Run Window Check</button></form>
-          <form method="post" action="./calendar-debug"><button>Run Calendar Debug</button></form>
-          <form method="post" action="./weather-debug"><button>Run Weather Debug</button></form>
+          <form method="post" action="./tick"><button title="Run the scheduled check now: show the schedule if a display window is open, or Artwork if one just ended.">Run Window Check</button></form>
+          <form method="post" action="./calendar-debug"><button title="Fetch today's calendar events and show the raw result below. Nothing on the TV changes.">Run Calendar Debug</button></form>
+          <form method="post" action="./weather-debug"><button title="Fetch the weather forecast and show the raw result below. Nothing on the TV changes.">Run Weather Debug</button></form>
         </div>
         <h2>Calendar Debug</h2>
         <pre>{escape(json_dump(state.get("calendar_debug", {})))}</pre>
@@ -410,7 +410,7 @@ async def generate_schedule_action() -> dict[str, str]:
     return {
         "action": "generate",
         "image": str(path),
-        "message": "Generated schedule image.",
+        "message": "Generated the schedule image. The TV was not changed; use Push Calendar Image to show it.",
     }
 
 
@@ -506,7 +506,15 @@ async def push_calendar_image() -> dict[str, str]:
     await push_schedule_to_frame("Manual calendar push", force_generate=True)
     return {
         "action": "show_schedule",
-        "message": "Generated and pushed the calendar image.",
+        "message": "Showing the schedule on the TV. "
+        + (
+            "A display window is open, so it stays until the window ends."
+            if window_manager.should_show_schedule(
+                datetime.now(ZoneInfo(config.timezone))
+            )
+            and not schedule_push_paused(state_store.read())
+            else "No display window is open, so the next window check puts Artwork back."
+        ),
     }
 
 
@@ -543,7 +551,7 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
         return {
             "action": "push_artwork",
             "art_id": artwork_tv_art_id,
-            "message": f"Pushed Artwork TV art {artwork_tv_art_id}.",
+            "message": f"Showing Artwork ({artwork_tv_art_id}) on the TV. It stays until the next display window starts.",
         }
 
     artwork_art_file = selected_artwork_file(state)
@@ -554,7 +562,7 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
         return {
             "action": "push_artwork",
             "image": path.name,
-            "message": f"Pushed Artwork {path.name} to the Frame TV.",
+            "message": f"Showing Artwork ({path.stem}) on the TV. It stays until the next display window starts.",
         }
 
     message = "No Artwork is configured."
@@ -596,6 +604,7 @@ def upload_summary(saved: list[str], failed: list[str]) -> str:
         if len(saved) == 1
         else f"Uploaded {len(saved)} art images."
     )
+    message += " Nothing was sent to the TV yet: use Preview on TV to try one, or Set Artwork to make one the default."
     if failed:
         message += f" {len(failed)} failed: {'; '.join(failed)}"
     return message
@@ -607,7 +616,7 @@ async def push_library_art(art_name: str) -> dict[str, str]:
     await frame_client.show_image(path, label=f"library_{path.stem}")
     state_store.update(
         {
-            "last_action": f"Pushed selected art {path.name} to the Frame TV.",
+            "last_action": f"Previewing {path.stem} on the TV.",
             "schedule_active": False,
             "schedule_push_mode": config.push_mode,
         }
@@ -615,7 +624,7 @@ async def push_library_art(art_name: str) -> dict[str, str]:
     return {
         "action": "push_art",
         "image": path.name,
-        "message": f"Pushed selected art {path.name} to the Frame TV.",
+        "message": f"Previewing {path.stem} on the TV. {preview_note(state_store.read())}",
     }
 
 
@@ -634,7 +643,7 @@ async def set_fallback_art(art_name: str) -> dict[str, str]:
     return {
         "action": "set_artwork",
         "image": path.name,
-        "message": f"Set Artwork to {path.name}.",
+        "message": f"{path.stem} is now the Artwork. {SET_ARTWORK_NOTE}",
     }
 
 
@@ -642,15 +651,17 @@ async def delete_library_art(art_name: str) -> dict[str, str]:
     path = art_library.delete(art_name)
     state = state_store.read()
     update: dict[str, Any] = {"last_action": f"Deleted add-on art {path.name}."}
+    message = f"Deleted {path.stem} from the add-on library. A copy already on the TV, if any, stays there."
     if selected_artwork_file(state) == path.name:
         update["artwork_art_file"] = ""
         update["fallback_art_file"] = ""
+        message += " It was the Artwork, so Artwork is now cleared; choose new Artwork."
     state_store.update(update)
     logger.info("deleted art library image path=%s", path)
     return {
         "action": "delete_art",
         "image": path.name,
-        "message": f"Deleted add-on art {path.name}.",
+        "message": message,
     }
 
 
@@ -717,7 +728,7 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
         ) from error
     state_store.update(
         {
-            "last_action": f"Pushed TV art {art_id}.",
+            "last_action": f"Previewing TV art {art_id}.",
             "schedule_active": False,
             "schedule_push_mode": config.push_mode,
         }
@@ -725,7 +736,7 @@ async def push_tv_art(art_id: str) -> dict[str, str]:
     return {
         "action": "push_tv_art",
         "art_id": art_id,
-        "message": f"Pushed TV art {art_id}.",
+        "message": f"Previewing TV art {art_id} on the TV. {preview_note(state_store.read())}",
     }
 
 
@@ -742,7 +753,7 @@ async def set_fallback_tv_art(art_id: str) -> dict[str, str]:
     return {
         "action": "set_artwork",
         "art_id": art_id,
-        "message": f"Set Artwork to TV art {art_id}.",
+        "message": f"TV art {art_id} is now the Artwork. {SET_ARTWORK_NOTE}",
     }
 
 
@@ -754,9 +765,11 @@ async def delete_tv_art(art_id: str) -> dict[str, str]:
         "last_action": f"Deleted TV art {art_id}.",
         "tv_art_items": items,
     }
+    message = f"Deleted {art_id} from the TV."
     if selected_artwork_tv_id(state) == art_id:
         update["artwork_tv_art_id"] = ""
         update["fallback_tv_art_id"] = ""
+        message += " It was the Artwork, so Artwork is now cleared; choose new Artwork."
     current = state.get("current_tv_art", {})
     if isinstance(current, dict) and str(current.get("art_id", "")) == art_id:
         update["current_tv_art"] = {}
@@ -765,7 +778,7 @@ async def delete_tv_art(art_id: str) -> dict[str, str]:
     return {
         "action": "delete_tv_art",
         "art_id": art_id,
-        "message": f"Deleted TV art {art_id}.",
+        "message": message,
     }
 
 
@@ -888,6 +901,34 @@ def selected_artwork_file(state: dict[str, Any]) -> str:
     return str(state.get("artwork_art_file", "") or state.get("fallback_art_file", ""))
 
 
+def artwork_name(state: dict[str, Any]) -> str:
+    file_name = selected_artwork_file(state)
+    return Path(file_name).stem if file_name else selected_artwork_tv_id(state)
+
+
+def preview_note(state: dict[str, Any]) -> str:
+    """Explain how long something shown by hand stays on the TV."""
+    if schedule_push_paused(state):
+        return "The schedule is paused, so it stays until you change it."
+    artwork = artwork_name(state)
+    after = f"Artwork ({artwork})" if artwork else "Artwork (none set yet)"
+    if window_manager.should_show_schedule(datetime.now(ZoneInfo(config.timezone))):
+        return (
+            "A display window is open, so the schedule replaces it at the next window check, "
+            f"and {after} comes back when the window ends."
+        )
+    return (
+        "It is temporary: it stays until the next display window starts, "
+        f"and {after} comes back when that window ends."
+    )
+
+
+SET_ARTWORK_NOTE = (
+    "The TV returns to it after every schedule window. "
+    "The TV was not changed now; use Push Artwork on the Schedule page to show it straight away."
+)
+
+
 def clear_artwork_tv_art_id() -> None:
     logger.warning("clearing Artwork TV art id that is no longer on the TV")
     state_store.update({"artwork_tv_art_id": "", "fallback_tv_art_id": ""})
@@ -940,26 +981,32 @@ def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
             f"""
             <article class="art-card{selected}">
               <img src="./addon-art-image/{escape(path.name)}" alt="{escape(title)}">
-              <div class="art-title">{escape(title)}</div>
+              <div class="art-title">{escape(title)}{artwork_badge(bool(selected))}</div>
               <div class="art-id">{escape(path.name)}</div>
               <div class="card-actions">
               <form method="post" action="./push-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button title="Upload this picture to the TV if needed and display it now. Artwork is not changed.">Show on TV</button>
+                <button title="Show this picture on the TV for now. It is temporary: the schedule replaces it at the next display window, and Artwork comes back after. Artwork is not changed.">Preview on TV</button>
               </form>
               <form method="post" action="./set-fallback-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button title="Show this picture whenever a schedule window ends.">Set Artwork</button>
+                <button title="Make this picture the Artwork: the default the TV returns to after every schedule window, and the one Push Artwork shows. The TV is not changed now.">Set Artwork</button>
               </form>
-              <form method="post" action="./delete-art">
+              <form method="post" action="./delete-art" onsubmit="return confirm('Delete this picture from the add-on library? A copy already on the TV stays there.')">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button class="danger" title="Delete from the add-on art library. Copies already on the TV stay there.">Delete</button>
+                <button class="danger" title="Delete from the add-on library. A copy already on the TV stays there.">Delete</button>
               </form>
               </div>
             </article>
             """
         )
     return "\n".join(cards)
+
+
+def artwork_badge(is_artwork: bool) -> str:
+    if not is_artwork:
+        return ""
+    return ' <span class="pill on" title="The TV returns to this picture after every schedule window.">Artwork</span>'
 
 
 def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
@@ -984,20 +1031,20 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
             f"""
             <article class="art-card{selected}">
               {thumbnail_html}
-              <div class="art-title">{escape(title)}</div>
+              <div class="art-title">{escape(title)}{artwork_badge(bool(selected))}</div>
               <div class="art-id">{escape(art_id)}</div>
               <div class="card-actions">
               <form method="post" action="./push-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button title="Display this picture on the TV now. Artwork is not changed.">Show on TV</button>
+                <button title="Show this picture on the TV for now. It is temporary: the schedule replaces it at the next display window, and Artwork comes back after. Artwork is not changed.">Preview on TV</button>
               </form>
               <form method="post" action="./set-fallback-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button title="Show this picture whenever a schedule window ends.">Set Artwork</button>
+                <button title="Make this picture the Artwork: the default the TV returns to after every schedule window, and the one Push Artwork shows. The TV is not changed now.">Set Artwork</button>
               </form>
-              <form method="post" action="./delete-tv-art">
+              <form method="post" action="./delete-tv-art" onsubmit="return confirm('Permanently delete this picture from the TV? This cannot be undone.')">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button class="danger" title="Delete this picture from the TV.">Delete</button>
+                <button class="danger" title="Permanently delete this picture from the TV. This cannot be undone.">Delete</button>
               </form>
               </div>
             </article>
@@ -1137,9 +1184,9 @@ def schedule_page() -> HTMLResponse:
         <h1>Schedule</h1>
         {render_schedule_push_toggle(state)}
         <div class="subnav">
-          <form method="post" action="./generate"><button>Generate</button></form>
-          <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
-          <form method="post" action="./push-fallback"><button>Push Artwork</button></form>
+          <form method="post" action="./generate"><button title="Redraw today's schedule image from the calendar and weather. The TV is not changed.">Generate</button></form>
+          <form method="post" action="./push-calendar"><button title="Redraw the schedule and show it on the TV now. If no display window is open, the next window check puts Artwork back.">Push Calendar Image</button></form>
+          <form method="post" action="./push-fallback"><button title="Show the Artwork on the TV now. It stays until the next display window starts.">Push Artwork</button></form>
         </div>
         <p>Schedule image: {"ready" if image_exists else "not generated yet"}</p>
         {f'<img src="./image?v={image_version}" alt="Generated schedule">' if image_exists else ""}
@@ -1153,11 +1200,11 @@ def render_schedule_push_toggle(state: dict[str, Any]) -> str:
     if schedule_push_paused(state):
         pill = '<span class="pill off">Paused</span>'
         detail = "The schedule is not pushed to the TV during display windows, so Artwork stays up."
-        button = '<input type="hidden" name="paused" value="false"><button>Resume Schedule on TV</button>'
+        button = '<input type="hidden" name="paused" value="false"><button title="Push the schedule to the TV again during display windows. Takes effect immediately.">Resume Schedule on TV</button>'
     else:
         pill = '<span class="pill on">On</span>'
         detail = "The schedule is pushed to the TV during display windows, and Artwork returns afterwards."
-        button = '<input type="hidden" name="paused" value="true"><button>Pause Schedule on TV</button>'
+        button = '<input type="hidden" name="paused" value="true"><button title="Stop pushing the schedule to the TV during display windows, so Artwork stays up. Takes effect immediately.">Pause Schedule on TV</button>'
     return f"""
         <div class="toggle-panel">
           <div><strong>Schedule on TV</strong> {pill}<p>{detail}</p></div>
@@ -1226,17 +1273,27 @@ def page_styles() -> str:
 
 def nav(active: str) -> str:
     links = [
-        ("current-tv", "./current-tv", "Current TV"),
-        ("schedule", "./", "Schedule"),
-        ("art", "./art", "Add-on Art"),
-        ("tv-art", "./tv-art", "TV Art"),
-        ("diagnostics", "./diagnostics", "Diagnostics"),
+        (
+            "current-tv",
+            "./current-tv",
+            "Current TV",
+            "What the TV is showing right now.",
+        ),
+        ("schedule", "./", "Schedule", "The schedule image and when it is shown."),
+        (
+            "art",
+            "./art",
+            "Add-on Art",
+            "Pictures stored in the add-on (4K copies, included in backups).",
+        ),
+        ("tv-art", "./tv-art", "TV Art", "Pictures stored on the TV itself."),
+        ("diagnostics", "./diagnostics", "Diagnostics", "Debug tools and raw state."),
     ]
     return (
         "<nav>"
         + "".join(
-            f'<a class="{"active" if key == active else ""}" href="{href}">{label}</a>'
-            for key, href, label in links
+            f'<a class="{"active" if key == active else ""}" href="{href}" title="{hint}">{label}</a>'
+            for key, href, label, hint in links
         )
         + "</nav>"
     )
