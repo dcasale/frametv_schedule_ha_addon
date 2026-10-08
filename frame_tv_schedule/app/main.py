@@ -100,7 +100,7 @@ async def art_page() -> HTMLResponse:
           </form>
           <form method="post" action="./push-art">
             <select name="art_name" required>{art_options}</select>
-            <button>Push Selected Art</button>
+            <button>Push Selected Art to TV</button>
           </form>
           <form method="post" action="./set-fallback-art">
             <select name="art_name" required>{art_options}</select>
@@ -136,14 +136,14 @@ async def tv_art_page() -> HTMLResponse:
         <h1>TV Art</h1>
         <p>Refresh the list from the Samsung Frame TV, then select an existing TV art item to display or use as Artwork.</p>
         <div class="action-panel">
-          <form method="post" action="./refresh-tv-art"><button>Refresh TV Art List</button></form>
+          <form method="post" action="./refresh-tv-art"><span class="hint">Reload the list and thumbnails from the TV.</span><button>Refresh TV Art List</button></form>
           <form method="post" action="./push-tv-art">
             <select name="art_id" required>{tv_art_options}</select>
-            <button>Push Selected TV Art</button>
+            <button>Push Selected Art to TV</button>
           </form>
           <form method="post" action="./set-fallback-tv-art">
             <select name="art_id" required>{tv_art_options}</select>
-            <button>Use Selected TV Art as Artwork</button>
+            <button>Use Selected Art as Artwork</button>
           </form>
         </div>
         <div class="art-grid">{tv_art_grid}</div>
@@ -250,6 +250,14 @@ async def generate_route(request: Request) -> Response:
 @app.post("/tick", response_model=None)
 async def tick_route(request: Request) -> Response:
     result = await run_ui_action(tick)
+    if wants_json(request):
+        return JSONResponse(result)
+    return RedirectResponse("./", status_code=303)
+
+
+@app.post("/schedule-push", response_model=None)
+async def schedule_push_route(request: Request, paused: str = Form(...)) -> Response:
+    result = await run_ui_action(lambda: set_schedule_push_paused(paused == "true"))
     if wants_json(request):
         return JSONResponse(result)
     return RedirectResponse("./", status_code=303)
@@ -406,6 +414,19 @@ async def generate_schedule_action() -> dict[str, str]:
     }
 
 
+async def set_schedule_push_paused(paused: bool) -> dict[str, str]:
+    state_store.update({"schedule_push_paused": paused})
+    logger.info("schedule push %s", "paused" if paused else "resumed")
+    label = "Schedule paused on the TV." if paused else "Schedule resumed on the TV."
+    # Apply it now: a showing schedule gives way to Artwork, or a resumed window shows the schedule.
+    result = await tick()
+    return {**result, "message": f"{label} {result['message']}"}
+
+
+def schedule_push_paused(state: dict[str, Any]) -> bool:
+    return bool(state.get("schedule_push_paused"))
+
+
 async def tick() -> dict[str, str]:
     try:
         return await tick_impl()
@@ -423,17 +444,19 @@ async def tick() -> dict[str, str]:
 
 async def tick_impl() -> dict[str, str]:
     now = datetime.now(ZoneInfo(config.timezone))
-    should_show = window_manager.should_show_schedule(now)
-    at_window_start = window_manager.is_window_start(now)
     state = state_store.read()
+    paused = schedule_push_paused(state)
+    should_show = not paused and window_manager.should_show_schedule(now)
+    at_window_start = window_manager.is_window_start(now)
     active = (
         bool(state.get("schedule_active"))
         and state.get("schedule_push_mode") == config.push_mode
     )
     current_schedule = generated_today(state, now, ZoneInfo(config.timezone))
     logger.info(
-        "window check push_mode=%s should_show=%s active=%s current_schedule=%s at_window_start=%s stored_push_mode=%s tv_host=%s",
+        "window check push_mode=%s paused=%s should_show=%s active=%s current_schedule=%s at_window_start=%s stored_push_mode=%s tv_host=%s",
         config.push_mode,
+        paused,
         should_show,
         active,
         current_schedule,
@@ -877,18 +900,20 @@ def render_addon_art_grid(paths: list[Path], selected_name: str = "") -> str:
               <img src="./addon-art-image/{escape(path.name)}" alt="{escape(title)}">
               <div class="art-title">{escape(title)}</div>
               <div class="art-id">{escape(path.name)}</div>
+              <div class="card-actions">
               <form method="post" action="./push-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button>Show</button>
+                <button title="Upload this picture to the TV if needed and display it now. Artwork is not changed.">Show on TV</button>
               </form>
               <form method="post" action="./set-fallback-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button>Set Artwork</button>
+                <button title="Show this picture whenever a schedule window ends.">Set Artwork</button>
               </form>
               <form method="post" action="./delete-art">
                 <input type="hidden" name="art_name" value="{escape(path.name)}">
-                <button class="danger">Delete</button>
+                <button class="danger" title="Delete from the add-on art library. Copies already on the TV stay there.">Delete</button>
               </form>
+              </div>
             </article>
             """
         )
@@ -919,18 +944,20 @@ def render_tv_art_grid(items: Any, selected_art_id: str = "") -> str:
               {thumbnail_html}
               <div class="art-title">{escape(title)}</div>
               <div class="art-id">{escape(art_id)}</div>
+              <div class="card-actions">
               <form method="post" action="./push-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button>Show</button>
+                <button title="Display this picture on the TV now. Artwork is not changed.">Show on TV</button>
               </form>
               <form method="post" action="./set-fallback-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button>Set Artwork</button>
+                <button title="Show this picture whenever a schedule window ends.">Set Artwork</button>
               </form>
               <form method="post" action="./delete-tv-art">
                 <input type="hidden" name="art_id" value="{escape(art_id)}">
-                <button class="danger">Delete</button>
+                <button class="danger" title="Delete this picture from the TV.">Delete</button>
               </form>
+              </div>
             </article>
             """
         )
@@ -1066,6 +1093,7 @@ def schedule_page() -> HTMLResponse:
         {nav("schedule")}
         {render_status(state)}
         <h1>Schedule</h1>
+        {render_schedule_push_toggle(state)}
         <div class="subnav">
           <form method="post" action="./generate"><button>Generate</button></form>
           <form method="post" action="./push-calendar"><button>Push Calendar Image</button></form>
@@ -1079,18 +1107,45 @@ def schedule_page() -> HTMLResponse:
     return HTMLResponse(body)
 
 
+def render_schedule_push_toggle(state: dict[str, Any]) -> str:
+    if schedule_push_paused(state):
+        pill = '<span class="pill off">Paused</span>'
+        detail = "The schedule is not pushed to the TV during display windows, so Artwork stays up."
+        button = '<input type="hidden" name="paused" value="false"><button>Resume Schedule on TV</button>'
+    else:
+        pill = '<span class="pill on">On</span>'
+        detail = "The schedule is pushed to the TV during display windows, and Artwork returns afterwards."
+        button = '<input type="hidden" name="paused" value="true"><button>Pause Schedule on TV</button>'
+    return f"""
+        <div class="toggle-panel">
+          <div><strong>Schedule on TV</strong> {pill}<p>{detail}</p></div>
+          <form method="post" action="./schedule-push">{button}</form>
+        </div>
+    """
+
+
 def page_styles() -> str:
     return """
         <style>
+          *, *::before, *::after { box-sizing: border-box; }
           body { font-family: system-ui, sans-serif; margin: 2rem; color: #1f2a2a; background: #f7f4ec; }
           nav { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
           nav a { color: #1f2a2a; text-decoration: none; padding: 0.55rem 0.8rem; border: 1px solid #cfc8ba; background: rgba(255,255,255,0.55); }
           nav a.active { background: #1f2a2a; color: #fffdf6; border-color: #1f2a2a; }
           img { max-width: 100%; border: 1px solid #cfc8ba; }
           .subnav, .action-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; padding: 0.75rem; margin: 1rem 0 1.25rem; background: rgba(255,255,255,0.55); border: 1px solid #cfc8ba; }
-          .action-panel { align-items: stretch; flex-direction: column; max-width: 58rem; }
-          .art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-          .art-card { background: rgba(255,255,255,0.65); border: 1px solid #cfc8ba; padding: 0.75rem; }
+          .subnav, .status { max-width: 58rem; }
+          .subnav form button { min-width: 12rem; }
+          .hint { color: #53605f; font-size: 0.9rem; }
+          .action-panel { display: grid; gap: 0.65rem; max-width: 58rem; }
+          .action-panel form { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 0.65rem; align-items: center; }
+          .action-panel form > button:only-child { grid-column: 2; }
+          .action-panel button { width: 100%; }
+          .art-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+          .art-card { display: flex; flex-direction: column; background: rgba(255,255,255,0.65); border: 1px solid #cfc8ba; padding: 0.75rem; }
+          .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: auto; padding-top: 0.75rem; }
+          .card-actions button { width: 100%; padding: 0.55rem 0.4rem; white-space: nowrap; }
+          .card-actions form:last-child { grid-column: 1 / -1; }
           .art-card.selected { border-color: #1f2a2a; box-shadow: inset 0 0 0 2px #1f2a2a; }
           .art-card img, .thumb-placeholder { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #e8e0d2; border: 1px solid #cfc8ba; display: grid; place-items: center; color: #53605f; }
           .art-title { font-weight: 700; margin-top: 0.65rem; overflow-wrap: anywhere; }
@@ -1100,17 +1155,29 @@ def page_styles() -> str:
           dl { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr; gap: 0.65rem 1rem; margin: 0; }
           dt { color: #53605f; font-weight: 700; }
           dd { margin: 0; overflow-wrap: anywhere; }
-          button { padding: 0.65rem 1rem; border: 1px solid #1f2a2a; background: #fffdf6; color: #1f2a2a; cursor: pointer; }
+          button { font: inherit; font-size: 0.95rem; padding: 0.65rem 1rem; border: 1px solid #1f2a2a; background: #fffdf6; color: #1f2a2a; cursor: pointer; }
           button:hover { background: #1f2a2a; color: #fffdf6; }
           button.danger { border-color: #8f3d30; color: #8f3d30; }
           button.danger:hover { background: #8f3d30; color: #fffdf6; }
-          input, select { padding: 0.55rem; margin-right: 0.5rem; min-width: 18rem; max-width: 100%; }
+          input, select { font: inherit; font-size: 0.95rem; padding: 0.55rem; width: 100%; min-width: 0; box-sizing: border-box; background: #fffdf6; border: 1px solid #cfc8ba; }
           form { margin: 0; }
           .status { background: #ffffff; border: 1px solid #cfc8ba; padding: 1rem; margin: 1rem 0; }
           .status.success { border-left: 0.35rem solid #46725d; }
           .status.error { border-left: 0.35rem solid #a54434; }
           .status-time { color: #53605f; font-size: 0.85rem; margin-top: 0.35rem; }
           pre { background: rgba(255,255,255,0.65); padding: 1rem; overflow: auto; }
+          .toggle-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem 1rem; padding: 0.75rem; margin: 1rem 0 1.25rem; max-width: 58rem; box-sizing: border-box; background: rgba(255,255,255,0.55); border: 1px solid #cfc8ba; }
+          .toggle-panel p { margin: 0.25rem 0 0; color: #53605f; font-size: 0.9rem; }
+          .toggle-panel button { min-width: 16rem; }
+          .pill { display: inline-block; padding: 0.1rem 0.55rem; font-size: 0.85rem; font-weight: 700; border: 1px solid; }
+          .pill.on { color: #46725d; }
+          .pill.off { color: #a54434; }
+          @media (max-width: 40rem) {
+            body { margin: 1rem; }
+            .action-panel form { grid-template-columns: 1fr; }
+            .action-panel form > button:only-child { grid-column: 1; }
+            .subnav form, .subnav form button, .toggle-panel form, .toggle-panel button { width: 100%; min-width: 0; }
+          }
         </style>
     """
 

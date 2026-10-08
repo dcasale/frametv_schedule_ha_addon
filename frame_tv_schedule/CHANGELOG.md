@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.31
+
+- Add **Pause Schedule on TV** / **Resume Schedule on TV** on the Schedule page. While paused, display windows do not push the schedule and Artwork stays up; the change applies immediately and survives restarts.
+- Tidy the layout on every page: panel buttons line up in one column at one width, gallery card buttons sit in a fixed grid at the bottom of each card, and pages stack cleanly on a phone.
+- Rename **Push Selected TV Art** to **Push Selected Art to TV** (and **Push Selected Art** on the Add-on Art page to match), and the card **Show** button to **Show on TV**. Card buttons now explain themselves on hover.
+
 ## 0.2.30
 
 - Fix multi-picture uploads failing with "maximum request body size". Home Assistant's Supervisor buffered each upload and capped it at 16 MiB, about two phone photos. The add-on now sets `ingress_stream: true`, so uploads stream through without that cap. Tested with 20 photos (115 MB) in one upload.

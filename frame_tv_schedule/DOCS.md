@@ -82,6 +82,8 @@ Use **Generate** to test calendar/image generation without touching the TV.
 
 Use **Push Calendar Image** after switching to `local_frame_api` when you want to force an immediate TV connection, upload, and pairing test without waiting for a display window. This action regenerates the schedule image first.
 
+Use **Pause Schedule on TV** at the top of the Schedule page to stop the schedule being pushed to the TV during display windows, for example while guests are over. Pausing takes effect immediately: if the schedule is on screen, Artwork is put back. **Resume Schedule on TV** turns it back on, and shows the schedule straight away if a display window is open. The setting is kept across restarts. While paused, the add-on also stops generating the schedule image automatically, because it only generates one when pushing it; **Generate** and **Push Calendar Image** still work by hand, and a manual push is replaced by Artwork at the next window check.
+
 Use **Push Artwork** to show the configured Artwork. Select Artwork from either the **TV Art** page or the **Add-on Art** page first.
 
 Use **Diagnostics** -> **Run Window Check** to test whether the add-on should show the schedule or Artwork based on the configured display windows.
@@ -121,11 +123,11 @@ Use the **Art Library** section in the web UI to upload images into the add-on. 
 
 After uploading art, use the dropdown or gallery cards to:
 
-- **Push Selected Art**: manually show that image on the TV.
-- **Use Selected Art as Artwork**: make that image the Artwork used by **Push Artwork** and by automatic window-end switching.
+- **Push Selected Art to TV** (or **Show on TV** on a card): show that image on the TV now. The add-on uploads it to the TV the first time and reuses that copy afterwards. Artwork is not changed, so the next window end still switches to Artwork.
+- **Use Selected Art as Artwork** (or **Set Artwork** on a card): make that image the Artwork used by **Push Artwork** and by automatic window-end switching.
 - **Delete**: remove that uploaded image from the add-on art library. If it was selected as Artwork, the Artwork selection is cleared.
 
-This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as Artwork, and verify **Push Selected Art** and **Push Artwork**.
+This is the recommended safety path before relying on automatic window switching. Upload one or more normal artwork images, set one as Artwork, and verify **Push Selected Art to TV** and **Push Artwork**.
 
 ## TV art
 
