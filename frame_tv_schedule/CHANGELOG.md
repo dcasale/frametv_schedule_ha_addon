@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.30
+
+- Fix multi-picture uploads failing with "maximum request body size". Home Assistant's Supervisor buffered each upload and capped it at 16 MiB, about two phone photos. The add-on now sets `ingress_stream: true`, so uploads stream through without that cap. Tested with 20 photos (115 MB) in one upload.
+
 ## 0.2.29
 
 - **Art Library** upload accepts several pictures at once. Each file is saved on its own, so one unreadable file no longer stops the rest; the status line turns red and names any file that failed.

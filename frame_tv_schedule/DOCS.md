@@ -117,7 +117,7 @@ When a manual token is configured, the add-on uses that token instead of `SUPERV
 
 ## Art library
 
-Use the **Art Library** section in the web UI to upload images into the add-on. You can select several pictures at once in the file picker. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size. JPEG and PNG work; HEIC files (the iPhone default when copied off a Mac) are rejected, so export them as JPEG first. Uploading from Safari on an iPhone converts them automatically. If some files in a batch fail, the rest are still saved and the status line names each failed file.
+Use the **Art Library** section in the web UI to upload images into the add-on. You can select several pictures at once in the file picker. Uploaded images are stored under the add-on config directory and normalized to the configured Frame image size. JPEG and PNG work; HEIC files (the iPhone default when copied off a Mac) are rejected, so export them as JPEG first. Uploading from Safari on an iPhone converts them automatically. If some files in a batch fail, the rest are still saved and the status line names each failed file. There is no practical size limit on a batch; 20 phone photos upload in one go, and processing takes roughly a second per picture.
 
 After uploading art, use the dropdown or gallery cards to:
 
