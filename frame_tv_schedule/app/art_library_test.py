@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from PIL import Image
 
@@ -13,9 +13,13 @@ class ArtLibraryTest(unittest.TestCase):
     def test_unique_name_and_sanitize_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             directory = Path(tmpdir)
-            self.assertEqual(unique_name(directory, "Family Photo.jpg"), "Family-Photo.png")
+            self.assertEqual(
+                unique_name(directory, "Family Photo.jpg"), "Family-Photo.png"
+            )
             (directory / "Family-Photo.png").write_text("")
-            self.assertEqual(unique_name(directory, "Family Photo.jpg"), "Family-Photo-2.png")
+            self.assertEqual(
+                unique_name(directory, "Family Photo.jpg"), "Family-Photo-2.png"
+            )
 
         self.assertEqual(sanitize_name("../art.png"), "art.png")
         self.assertEqual(sanitize_name("art"), "art.png")
@@ -29,7 +33,9 @@ class ArtLibraryTest(unittest.TestCase):
 
             library = ArtLibrary(directory)
 
-            self.assertEqual([path.name for path in library.list_images()], ["a.png", "b.png"])
+            self.assertEqual(
+                [path.name for path in library.list_images()], ["a.png", "b.png"]
+            )
 
     def test_delete_removes_image(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -49,7 +55,6 @@ class ArtLibraryTest(unittest.TestCase):
             source = directory / "source.jpg"
             Image.new("RGB", (1200, 800), "#336699").save(source)
 
-            library = ArtLibrary(directory, width=1920, height=1080)
             target = directory / "target.png"
             from .art_library import normalize_image
 

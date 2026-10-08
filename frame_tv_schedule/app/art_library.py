@@ -8,7 +8,12 @@ from PIL import Image, ImageOps
 
 
 class ArtLibrary:
-    def __init__(self, path: str | Path = "/config/art-library", width: int = 3840, height: int = 2160) -> None:
+    def __init__(
+        self,
+        path: str | Path = "/config/art-library",
+        width: int = 3840,
+        height: int = 2160,
+    ) -> None:
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
         self.width = width
