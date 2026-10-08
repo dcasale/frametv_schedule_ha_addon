@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from fastapi import UploadFile
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 class ArtLibrary:
@@ -48,6 +48,10 @@ class ArtLibrary:
         source_path.write_bytes(data)
         try:
             normalize_image(source_path, output_path, self.width, self.height)
+        except UnidentifiedImageError as error:
+            raise ValueError(
+                "not an image the add-on can read; use JPEG or PNG (HEIC is not supported)"
+            ) from error
         finally:
             source_path.unlink(missing_ok=True)
 

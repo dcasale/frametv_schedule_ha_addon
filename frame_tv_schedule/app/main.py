@@ -92,9 +92,10 @@ async def art_page() -> HTMLResponse:
         {nav("art")}
         {render_status(state)}
         <h1>Art Library</h1>
+        <p>Upload one picture or select several at once. Each is saved as a 4K copy in the add-on config folder, which Home Assistant backups include.</p>
         <div class="action-panel">
           <form method="post" action="./upload-art" enctype="multipart/form-data">
-            <input type="file" name="art_file" accept="image/*" required>
+            <input type="file" name="art_file" accept="image/*" multiple required>
             <button>Upload Art</button>
           </form>
           <form method="post" action="./push-art">
@@ -273,7 +274,7 @@ async def push_fallback_route(request: Request) -> Response:
 @app.post("/upload-art", response_model=None)
 async def upload_art_route(
     request: Request,
-    art_file: UploadFile = File(...),  # noqa: B008 - FastAPI idiom
+    art_file: list[UploadFile] = File(...),  # noqa: B008 - FastAPI idiom
 ) -> Response:
     result = await run_ui_action(lambda: upload_art(art_file))
     if wants_json(request):
@@ -531,15 +532,42 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
     raise RuntimeError(message)
 
 
-async def upload_art(art_file: UploadFile) -> dict[str, str]:
-    path = await art_library.save_upload(art_file)
-    state_store.update({"last_action": f"Uploaded art image {path.name}."})
-    logger.info("uploaded art library image path=%s", path)
+async def upload_art(art_files: list[UploadFile]) -> dict[str, str]:
+    saved: list[str] = []
+    failed: list[str] = []
+    for art_file in art_files:
+        try:
+            path = await art_library.save_upload(art_file)
+        except Exception as error:
+            logger.exception(
+                "failed to upload art image filename=%s", art_file.filename
+            )
+            failed.append(f"{art_file.filename or '(unnamed)'}: {error}")
+            continue
+        logger.info("uploaded art library image path=%s", path)
+        saved.append(path.name)
+
+    if not saved:
+        raise ValueError(f"No images uploaded. {'; '.join(failed)}")
+    message = upload_summary(saved, failed)
     return {
         "action": "upload_art",
-        "image": path.name,
-        "message": f"Uploaded art image {path.name}.",
+        "image": saved[0],
+        "images": ", ".join(saved),
+        "failed": str(len(failed)) if failed else "",
+        "message": message,
     }
+
+
+def upload_summary(saved: list[str], failed: list[str]) -> str:
+    message = (
+        f"Uploaded art image {saved[0]}."
+        if len(saved) == 1
+        else f"Uploaded {len(saved)} art images."
+    )
+    if failed:
+        message += f" {len(failed)} failed: {'; '.join(failed)}"
+    return message
 
 
 async def push_library_art(art_name: str) -> dict[str, str]:
@@ -766,7 +794,8 @@ async def run_ui_action(action: Any) -> dict[str, Any]:
         )
         status = (
             "error"
-            if isinstance(result, dict) and result.get("action") == "error"
+            if isinstance(result, dict)
+            and (result.get("action") == "error" or result.get("failed"))
             else "success"
         )
         state_store.update(

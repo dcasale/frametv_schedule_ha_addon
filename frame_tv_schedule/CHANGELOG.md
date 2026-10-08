@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.29
+
+- **Art Library** upload accepts several pictures at once. Each file is saved on its own, so one unreadable file no longer stops the rest; the status line turns red and names any file that failed.
+- Unreadable uploads (for example HEIC files) now say so plainly instead of showing an image-library error.
+
 ## 0.2.28
 
 - Fix **Refresh TV Art List** silently keeping the old list: on newer Frame firmware one Art Store thumbnail could hang until the 90-second timeout, which threw away the fresh list. The list is now saved first and thumbnails are best-effort; items without one show "No thumbnail".

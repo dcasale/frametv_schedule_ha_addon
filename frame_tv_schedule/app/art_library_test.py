@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import io
 import tempfile
 import unittest
 from pathlib import Path
 
+from fastapi import UploadFile
 from PIL import Image
 
 from .art_library import ArtLibrary, sanitize_name, unique_name
@@ -62,6 +65,19 @@ class ArtLibraryTest(unittest.TestCase):
 
             with Image.open(target) as image:
                 self.assertEqual(image.size, (1920, 1080))
+
+    def test_unreadable_upload_raises_clear_error_and_leaves_no_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            directory = Path(tmpdir)
+            library = ArtLibrary(directory)
+            upload = UploadFile(
+                file=io.BytesIO(b"not an image"), filename="IMG_0001.HEIC"
+            )
+
+            with self.assertRaisesRegex(ValueError, "not an image the add-on can read"):
+                asyncio.run(library.save_upload(upload))
+
+            self.assertEqual(list(directory.iterdir()), [])
 
 
 if __name__ == "__main__":
