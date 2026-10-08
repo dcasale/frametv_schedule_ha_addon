@@ -25,6 +25,15 @@ class TvArtItem:
 class UploadedFrameImage:
     art_id: str
     stale_schedule_art_ids: tuple[str, ...] = ()
+    cached: bool = False
+
+
+class ArtNotOnTvError(RuntimeError):
+    """The TV refused to show an art ID that its art list confirms it no longer has."""
+
+    def __init__(self, art_id: str) -> None:
+        super().__init__(f"art id {art_id} is no longer on the TV")
+        self.art_id = art_id
 
 
 class FrameClient:
@@ -156,10 +165,20 @@ class FrameClient:
 
     def _show_image_sync(self, image_path: Path, label: str = "image") -> None:
         upload = self._ensure_uploaded_image(image_path, label)
-        with self._tv() as tv:
-            art = tv.art()
-            ensure_art_supported(art)
-            art.select_image(upload.art_id, show=True)
+        try:
+            self._select_on_tv(upload.art_id)
+        except ArtNotOnTvError:
+            if not upload.cached:
+                raise
+            # Our remembered copy was deleted on the TV (or the TV was reset): upload it again.
+            logger.warning(
+                "cached %s art id=%s is gone from the TV; uploading again",
+                label,
+                upload.art_id,
+            )
+            self._forget_upload(label, upload.art_id)
+            upload = self._ensure_uploaded_image(image_path, label)
+            self._select_on_tv(upload.art_id)
         if upload.stale_schedule_art_ids:
             self._purge_stale_schedule_art(upload.art_id, upload.stale_schedule_art_ids)
         logger.info("showing %s art id=%s", label, upload.art_id)
@@ -189,11 +208,40 @@ class FrameClient:
     def _select_art_sync(self, art_id: str) -> None:
         if not art_id:
             raise RuntimeError("art_id is required")
+        self._select_on_tv(art_id)
+        logger.info("selected Samsung Frame art id=%s", art_id)
+
+    def _select_on_tv(self, art_id: str) -> None:
         with self._tv() as tv:
             art = tv.art()
             ensure_art_supported(art)
-            art.select_image(art_id, show=True)
-        logger.info("selected Samsung Frame art id=%s", art_id)
+            try:
+                art.select_image(art_id, show=True)
+            except Exception:
+                # Some failures (error -10 on 2022 firmware) mean the ID is gone. Confirm
+                # against the TV's own list rather than trusting the error code.
+                try:
+                    present = art_id in available_content_ids(art.available())
+                except Exception:
+                    logger.warning(
+                        "could not re-read Samsung Frame art list", exc_info=True
+                    )
+                    present = True
+                if not present:
+                    raise ArtNotOnTvError(art_id) from None
+                raise
+
+    def _forget_upload(self, label: str, art_id: str) -> None:
+        state = self._read_state()
+        state.pop(f"{label}_image_sha256", None)
+        state.pop(f"{label}_art_id", None)
+        if isinstance(state.get("schedule_art_ids"), list):
+            state["schedule_art_ids"] = [
+                tracked for tracked in state["schedule_art_ids"] if tracked != art_id
+            ]
+        if state.get("schedule_art_id") == art_id:
+            state.pop("schedule_art_id")
+        self._write_state(state)
 
     def _delete_art_sync(self, art_id: str) -> None:
         if not art_id:
@@ -269,8 +317,9 @@ class FrameClient:
                     stale_schedule_art_ids=tuple(
                         art_id for art_id in tracked_ids if art_id != content_id
                     ),
+                    cached=True,
                 )
-            return UploadedFrameImage(content_id)
+            return UploadedFrameImage(content_id, cached=True)
 
         content_id = self._upload_image(image_path)
         logger.info("uploaded %s image as art id=%s", label, content_id)

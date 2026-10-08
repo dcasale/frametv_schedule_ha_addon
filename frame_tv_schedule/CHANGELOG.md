@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.32
+
+- Handle art that has disappeared from the TV (deleted, or the TV was reset) instead of failing with "`select_image` request failed with error number -10". The add-on re-reads the TV's art list to confirm the picture is really gone before acting:
+  - **Artwork** pointing at missing TV art is cleared, with a message to choose new Artwork. The TV reuses its `MY_F` numbers, so keeping a dead ID could later show a different picture.
+  - **Refresh TV Art List** also clears Artwork that is no longer on the TV.
+  - **Show on TV** for TV art that has gone removes it from the list.
+  - Add-on Art pictures whose copy on the TV has gone are uploaded again automatically.
+
 ## 0.2.31
 
 - Add **Pause Schedule on TV** / **Resume Schedule on TV** on the Schedule page. While paused, display windows do not push the schedule and Artwork stays up; the change applies immediately and survives restarts.

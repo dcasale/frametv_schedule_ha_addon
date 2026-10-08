@@ -23,7 +23,7 @@ from .art_library import ArtLibrary
 from .art_window_manager import ArtWindowManager, generated_today
 from .calendar_client import HomeAssistantCalendarClient
 from .config import config_json, load_config
-from .frame_client import FrameClient
+from .frame_client import ArtNotOnTvError, FrameClient
 from .renderer import ScheduleRenderer
 from .state_store import StateStore
 from .thumbnail_cache import archive_orphan_thumbnails
@@ -531,7 +531,15 @@ async def show_selected_fallback_image(allow_empty: bool = False) -> dict[str, s
     artwork_tv_art_id = selected_artwork_tv_id(state)
     if artwork_tv_art_id:
         logger.info("push artwork requested from TV art id=%s", artwork_tv_art_id)
-        await frame_client.select_art(artwork_tv_art_id)
+        try:
+            await frame_client.select_art(artwork_tv_art_id)
+        except ArtNotOnTvError as error:
+            # Clear it: the TV reuses MY_F numbers, so a dead ID could later show a different picture.
+            clear_artwork_tv_art_id()
+            raise RuntimeError(
+                f"Artwork {artwork_tv_art_id} is no longer on the TV, so it was cleared. "
+                "Choose new Artwork on the Add-on Art or TV Art page."
+            ) from error
         return {
             "action": "push_artwork",
             "art_id": artwork_tv_art_id,
@@ -664,6 +672,18 @@ async def refresh_tv_art() -> dict[str, str]:
     state_store.update({"tv_art_items": with_cached_thumbnails(art_items)})
 
     message = f"Loaded {len(art_items)} art item(s) from the Frame TV."
+    needs_attention = ""
+    artwork_tv_art_id = selected_artwork_tv_id(state_store.read())
+    tv_art_ids = {item["art_id"] for item in art_items}
+    # dry_run lists nothing, so only a real TV listing can prove Artwork is gone.
+    if (
+        config.push_mode == "local_frame_api"
+        and artwork_tv_art_id
+        and artwork_tv_art_id not in tv_art_ids
+    ):
+        clear_artwork_tv_art_id()
+        needs_attention = "artwork_cleared"
+        message += f" Artwork {artwork_tv_art_id} is no longer on the TV and was cleared; choose new Artwork."
     try:
         await fetch_missing_thumbnails(art_items)
     except Exception:
@@ -676,12 +696,25 @@ async def refresh_tv_art() -> dict[str, str]:
     return {
         "action": "refresh_tv_art",
         "count": str(len(art_items)),
+        "needs_attention": needs_attention,
         "message": message,
     }
 
 
 async def push_tv_art(art_id: str) -> dict[str, str]:
-    await frame_client.select_art(art_id)
+    try:
+        await frame_client.select_art(art_id)
+    except ArtNotOnTvError as error:
+        state_store.update(
+            {
+                "tv_art_items": remove_tv_art_item(
+                    state_store.read().get("tv_art_items", []), art_id
+                )
+            }
+        )
+        raise RuntimeError(
+            f"TV art {art_id} is no longer on the TV and was removed from the list."
+        ) from error
     state_store.update(
         {
             "last_action": f"Pushed TV art {art_id}.",
@@ -818,7 +851,11 @@ async def run_ui_action(action: Any) -> dict[str, Any]:
         status = (
             "error"
             if isinstance(result, dict)
-            and (result.get("action") == "error" or result.get("failed"))
+            and (
+                result.get("action") == "error"
+                or result.get("failed")
+                or result.get("needs_attention")
+            )
             else "success"
         )
         state_store.update(
@@ -849,6 +886,11 @@ def wants_json(request: Request) -> bool:
 
 def selected_artwork_file(state: dict[str, Any]) -> str:
     return str(state.get("artwork_art_file", "") or state.get("fallback_art_file", ""))
+
+
+def clear_artwork_tv_art_id() -> None:
+    logger.warning("clearing Artwork TV art id that is no longer on the TV")
+    state_store.update({"artwork_tv_art_id": "", "fallback_tv_art_id": ""})
 
 
 def selected_artwork_tv_id(state: dict[str, Any]) -> str:
