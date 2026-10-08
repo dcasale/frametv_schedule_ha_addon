@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.28
+
+- Fix **Refresh TV Art List** silently keeping the old list: on newer Frame firmware one Art Store thumbnail could hang until the 90-second timeout, which threw away the fresh list. The list is now saved first and thumbnails are best-effort; items without one show "No thumbnail".
+- Thumbnails for art that is no longer on the TV are moved to `tv-art-thumbnails-removed/` in the add-on config folder instead of being shown. They are kept, not deleted, because they may be the only record of lost art.
 ## 0.2.27
 
 - Security update: upgrade Pillow (12.3.0), aiohttp (3.14.3) and FastAPI/Starlette (0.141.1 / 1.7.0) to fix published vulnerabilities, several of them in image and upload handling. Update is recommended, especially if port 8099 is reachable from your network.

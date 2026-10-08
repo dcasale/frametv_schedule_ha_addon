@@ -26,6 +26,7 @@ from .config import config_json, load_config
 from .frame_client import FrameClient
 from .renderer import ScheduleRenderer
 from .state_store import StateStore
+from .thumbnail_cache import archive_orphan_thumbnails
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger("frame_tv_schedule")
@@ -39,6 +40,7 @@ state_store = StateStore()
 art_library = ArtLibrary(width=config.image_width, height=config.image_height)
 thumbnail_cache_path = Path("/config/tv-art-thumbnails")
 thumbnail_cache_path.mkdir(parents=True, exist_ok=True)
+thumbnail_archive_path = Path("/config/tv-art-thumbnails-removed")
 scheduler = AsyncIOScheduler(timezone=ZoneInfo(config.timezone))
 
 
@@ -595,17 +597,35 @@ async def delete_library_art(art_name: str) -> dict[str, str]:
 
 async def refresh_tv_art() -> dict[str, str]:
     items = await frame_client.list_available_art()
-    cached_items = await cache_tv_art_thumbnails(items)
-    state_store.update(
-        {
-            "last_action": f"Loaded {len(cached_items)} art item(s) from the Frame TV.",
-            "tv_art_items": cached_items,
-        }
+    art_items = [item.__dict__ for item in items]
+    archived = archive_orphan_thumbnails(
+        thumbnail_cache_path,
+        thumbnail_archive_path,
+        {safe_thumbnail_stem(item["art_id"]) for item in art_items},
     )
+    if archived:
+        logger.info(
+            "archived %s thumbnail(s) for art no longer on the TV to %s",
+            len(archived),
+            thumbnail_archive_path,
+        )
+    # Save the TV's list before fetching thumbnails, so a thumbnail failure never leaves a stale list.
+    state_store.update({"tv_art_items": with_cached_thumbnails(art_items)})
+
+    message = f"Loaded {len(art_items)} art item(s) from the Frame TV."
+    try:
+        await fetch_missing_thumbnails(art_items)
+    except Exception:
+        logger.exception("failed to fetch Samsung Frame thumbnails")
+    art_items = with_cached_thumbnails(art_items)
+    missing = sum(1 for item in art_items if not item["thumbnail"])
+    if missing:
+        message += f" {missing} thumbnail(s) unavailable."
+    state_store.update({"last_action": message, "tv_art_items": art_items})
     return {
         "action": "refresh_tv_art",
-        "count": str(len(cached_items)),
-        "message": f"Loaded {len(cached_items)} art item(s) from the Frame TV.",
+        "count": str(len(art_items)),
+        "message": message,
     }
 
 
@@ -938,8 +958,7 @@ def remove_tv_art_item(items: Any, art_id: str) -> list[dict[str, str]]:
     return remaining
 
 
-async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
-    art_items = [item.__dict__ for item in items]
+async def fetch_missing_thumbnails(art_items: list[dict[str, str]]) -> None:
     missing_ids = [
         item["art_id"]
         for item in art_items
@@ -949,9 +968,12 @@ async def cache_tv_art_thumbnails(items: Any) -> list[dict[str, str]]:
     for art_id, data in thumbnails.items():
         write_thumbnail(art_id, data)
 
-    for item in art_items:
-        item["thumbnail"] = existing_thumbnail_name(item["art_id"])
-    return art_items
+
+def with_cached_thumbnails(art_items: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [
+        {**item, "thumbnail": existing_thumbnail_name(item["art_id"])}
+        for item in art_items
+    ]
 
 
 def write_thumbnail(art_id: str, data: bytes) -> Path:

@@ -216,18 +216,22 @@ class FrameClient:
         with self._tv() as tv:
             art = tv.art()
             ensure_art_supported(art)
+            thumbnail_list = getattr(art, "get_thumbnail_list", None)
             for art_id in art_ids:
                 payload: Any = None
-                thumbnail_list = getattr(art, "get_thumbnail_list", None)
                 if callable(thumbnail_list):
+                    # Newer art APIs (4.x) refuse some items here, e.g. Art Store content, and the
+                    # legacy get_thumbnail then never answers, so no fallback on this path.
                     try:
                         payload = thumbnail_list(art_id)
                     except Exception:
-                        logger.exception(
-                            "failed to fetch Samsung Frame thumbnail list art_id=%s",
+                        logger.warning(
+                            "Samsung Frame refused thumbnail art_id=%s",
                             art_id,
+                            exc_info=True,
                         )
-                if not payload:
+                        continue
+                else:
                     try:
                         payload = art.get_thumbnail(art_id, as_dict=True)
                     except Exception:
